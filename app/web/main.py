@@ -142,6 +142,46 @@ class WatchRequest(BaseModel):
     id: Optional[str] = None
 
 
+class SolveRequest(BaseModel):
+    """Solve one ask — by stored ask_id, or by pasted text for ad-hoc use."""
+    ask_id: Optional[str] = None
+    text: Optional[str] = None
+    offer: str = ""
+    niche: str = ""
+
+
+class BriefRequest(BaseModel):
+    offer: str = ""
+    niche: str = ""
+    limit: int = Field(default=120, ge=1, le=500)
+
+
+class OfferDoctorRequest(BaseModel):
+    offer: str = Field(min_length=3)
+    limit: int = Field(default=120, ge=1, le=500)
+
+
+class SolveBatchRequest(BaseModel):
+    offer: str = ""
+    niche: str = ""
+    limit: int = Field(default=5, ge=1, le=20)
+    only_zero_reply: bool = True
+
+
+class VariantsRequest(BaseModel):
+    ask_id: Optional[str] = None
+    text: Optional[str] = None
+    offer: str = ""
+    niche: str = ""
+    n: int = Field(default=4, ge=2, le=6)
+
+
+class CockpitRequest(BaseModel):
+    offer: str = ""
+    niche: str = ""
+    limit: int = Field(default=150, ge=1, le=500)
+
+
 @app.get("/", response_class=HTMLResponse)
 def index() -> HTMLResponse:
     index_path = TEMPLATES_DIR / "index.html"
@@ -157,7 +197,10 @@ def health() -> dict[str, Any]:
         "version": __version__,
         "proxy": proxy_status(),
         "platforms": list(PLATFORM_SCRAPERS.keys()),
-        "features": ["demand_radar", "discover", "scrape", "watch"],
+        "features": [
+            "demand_radar", "discover", "scrape", "watch",
+            "ai_engine", "answer_engine", "demand_graph", "forecast", "outcome_rag",
+        ],
         "api_key_required": bool((env_get("PANOPTES_API_KEY") or "").strip()),
         "providers": provider_status(),
     }
@@ -277,6 +320,220 @@ def radar_outcome(ask_id: str, body: OutcomeRequest) -> dict[str, Any]:
     if not ok:
         raise HTTPException(404, "Ask not found")
     return {"ok": True, "ask_id": ask_id, "outcome": body.outcome, "status": body.status}
+
+
+# ── AI engine ────────────────────────────────────────────────────
+
+def _ai_leads(limit: int, offer: str = "") -> list[dict[str, Any]]:
+    """
+    Stored asks are the evidence base for every AI capability.
+
+    The offer filter is an exact string match, so a slightly reworded offer
+    would return nothing. Fall back to the full set rather than reporting
+    "no evidence" when asks clearly exist.
+    """
+    capped = min(limit, 500)
+    offer = (offer or "").strip()
+    if offer:
+        scoped = list_leads(limit=capped, offer=offer)
+        if scoped:
+            return scoped
+    return list_leads(limit=capped)
+
+
+@app.get("/api/ai/status", dependencies=[Depends(_require_api_key)])
+def ai_status() -> dict[str, Any]:
+    from app.ai.engine import ai_available, ai_mode
+
+    return {
+        "available": ai_available(),
+        "mode": ai_mode(),
+        "generative": ai_mode() in ("openai", "anthropic"),
+        "capabilities": [
+            "solve", "brief", "offer_doctor", "cluster", "cockpit",
+            "match", "intel", "graph", "personas", "forecast",
+            "variants", "memory",
+        ],
+        "algorithms": [
+            "tfidf_clustering", "bm25_ranking", "char_ngram_jaccard",
+            "naive_bayes_intent", "logistic_reply_odds", "pagerank_centrality",
+            "ols_forecast", "outcome_rag", "persona_bucketing",
+        ],
+    }
+
+
+@app.post("/api/ai/solve", dependencies=[Depends(_require_api_key)])
+def ai_solve(body: SolveRequest) -> dict[str, Any]:
+    """Answer Engine — produce a real solution for one unanswered ask."""
+    from app.ai.pipeline import solve_with_memory
+
+    lead: dict[str, Any] | None = None
+    corpus = _ai_leads(500)
+    if body.ask_id:
+        for candidate in corpus:
+            if candidate.get("ask_id") == body.ask_id:
+                lead = candidate
+                break
+        if lead is None:
+            raise HTTPException(404, "Ask not found — re-run a scan or pass text instead")
+    elif body.text and body.text.strip():
+        lead = {"ask_quote": body.text.strip(), "username": "manual", "ask_id": ""}
+    else:
+        raise HTTPException(422, "Provide ask_id or text")
+
+    solution = solve_with_memory(lead, corpus, {"offer": body.offer, "niche": body.niche})
+    return {
+        "ask_id": lead.get("ask_id") or "",
+        "username": lead.get("username") or "",
+        "ask_quote": lead.get("ask_quote") or lead.get("evidence") or "",
+        "solution": solution,
+    }
+
+
+@app.post("/api/ai/solve-batch", dependencies=[Depends(_require_api_key)])
+def ai_solve_batch(body: SolveBatchRequest) -> dict[str, Any]:
+    """Solve the highest-value silent asks in one pass (ranked by priority intel)."""
+    from app.ai.intel import analyze_ask
+    from app.ai.pipeline import solve_with_memory
+
+    corpus = _ai_leads(200, body.offer)
+    leads = list(corpus)
+    if body.only_zero_reply:
+        zero = [l for l in leads if int(l.get("num_comments") or 0) == 0]
+        leads = zero or leads
+    # Rank by combined silence + intel priority instead of silence alone
+    leads.sort(
+        key=lambda l: -(
+            int(analyze_ask(l).get("priority_score") or 0) * 0.6
+            + int(l.get("silence_score") or 0) * 0.4
+        )
+    )
+    solutions = []
+    for lead in leads[: body.limit]:
+        sol = solve_with_memory(lead, corpus, {"offer": body.offer, "niche": body.niche})
+        sol["ask_id"] = lead.get("ask_id") or ""
+        sol["username"] = lead.get("username") or ""
+        solutions.append(sol)
+    return {"count": len(solutions), "solutions": solutions}
+
+
+@app.post("/api/ai/brief", dependencies=[Depends(_require_api_key)])
+def ai_brief(body: BriefRequest) -> dict[str, Any]:
+    """Demand verdict — is this real demand, backed by the evidence found?"""
+    from app.ai.synthesis import demand_brief
+
+    leads = _ai_leads(body.limit, body.offer)
+    return demand_brief(leads, {"offer": body.offer, "niche": body.niche})
+
+
+@app.post("/api/ai/offer-doctor", dependencies=[Depends(_require_api_key)])
+def ai_offer_doctor(body: OfferDoctorRequest) -> dict[str, Any]:
+    """Rewrite the offer in the words real buyers used."""
+    from app.ai.synthesis import offer_doctor
+
+    leads = _ai_leads(body.limit)
+    return offer_doctor(body.offer, leads)
+
+
+@app.get("/api/ai/clusters", dependencies=[Depends(_require_api_key)])
+def ai_clusters(limit: int = 200, offer: str = "") -> dict[str, Any]:
+    """Free demand clustering — no API key required."""
+    from app.ai.synthesis import cluster_asks, compute_signal
+
+    leads = _ai_leads(limit, offer)
+    return {
+        "clusters": cluster_asks(leads),
+        "stats": compute_signal(leads),
+        "analysed": len(leads),
+    }
+
+
+@app.post("/api/ai/cockpit", dependencies=[Depends(_require_api_key)])
+def ai_cockpit(body: CockpitRequest) -> dict[str, Any]:
+    """Full intelligence suite — match, intel, graph, personas, forecast, memory."""
+    from app.ai.pipeline import run_cockpit
+
+    leads = _ai_leads(body.limit, body.offer)
+    return run_cockpit(leads, {"offer": body.offer, "niche": body.niche})
+
+
+@app.post("/api/ai/match", dependencies=[Depends(_require_api_key)])
+def ai_match(body: CockpitRequest) -> dict[str, Any]:
+    """BM25 + char-ngram ranking of asks against the offer."""
+    from app.ai.match import match_summary, rank_asks
+
+    if not (body.offer or "").strip():
+        raise HTTPException(422, "Provide an offer to match against")
+    leads = _ai_leads(body.limit, body.offer)
+    ranked = rank_asks(body.offer, leads, limit=25)
+    return {"ranked": ranked, "summary": match_summary(ranked), "analysed": len(leads)}
+
+
+@app.get("/api/ai/intel", dependencies=[Depends(_require_api_key)])
+def ai_intel(limit: int = 100, offer: str = "") -> dict[str, Any]:
+    """Per-ask intent / urgency / stage / reply-odds packets."""
+    from app.ai.intel import analyze_many
+
+    leads = _ai_leads(limit, offer)
+    packets = analyze_many(leads)
+    return {"intel": packets, "analysed": len(leads)}
+
+
+@app.get("/api/ai/graph", dependencies=[Depends(_require_api_key)])
+def ai_graph(limit: int = 200, offer: str = "") -> dict[str, Any]:
+    """Demand co-occurrence graph with PageRank hubs."""
+    from app.ai.graph import build_demand_graph
+
+    leads = _ai_leads(limit, offer)
+    return build_demand_graph(leads)
+
+
+@app.get("/api/ai/personas", dependencies=[Depends(_require_api_key)])
+def ai_personas(limit: int = 200, offer: str = "") -> dict[str, Any]:
+    """Buyer personas + objection mining."""
+    from app.ai.personas import infer_personas
+
+    leads = _ai_leads(limit, offer)
+    return infer_personas(leads)
+
+
+@app.get("/api/ai/forecast", dependencies=[Depends(_require_api_key)])
+def ai_forecast(limit: int = 200, offer: str = "") -> dict[str, Any]:
+    """OLS trend + 7/14/30-day demand projection."""
+    from app.ai.forecast import forecast_demand
+
+    leads = _ai_leads(limit, offer)
+    return forecast_demand(leads)
+
+
+@app.post("/api/ai/variants", dependencies=[Depends(_require_api_key)])
+def ai_variants(body: VariantsRequest) -> dict[str, Any]:
+    """A/B outreach variants scored by expected-value reply odds."""
+    from app.ai.variants import generate_variants
+
+    lead: dict[str, Any] | None = None
+    if body.ask_id:
+        for candidate in _ai_leads(500):
+            if candidate.get("ask_id") == body.ask_id:
+                lead = candidate
+                break
+        if lead is None:
+            raise HTTPException(404, "Ask not found")
+    elif body.text and body.text.strip():
+        lead = {"ask_quote": body.text.strip(), "username": "manual", "ask_id": ""}
+    else:
+        raise HTTPException(422, "Provide ask_id or text")
+
+    return generate_variants(lead, {"offer": body.offer, "niche": body.niche}, n=body.n)
+
+
+@app.get("/api/ai/memory", dependencies=[Depends(_require_api_key)])
+def ai_memory(limit: int = 500, offer: str = "") -> dict[str, Any]:
+    """Outcome-trained patterns — what converts in your tagged history."""
+    from app.ai.memory import training_signal
+
+    leads = _ai_leads(limit, offer)
+    return training_signal(leads)
 
 
 @app.get("/api/radar/watches", dependencies=[Depends(_require_api_key)])
