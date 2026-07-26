@@ -6,25 +6,62 @@
   <title>Panoptes — See if you have real demand</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/app.css" />
 </head>
 <body>
+  <!-- ── Animated AI background layers ─────────────────── -->
+  <canvas class="fx-canvas" id="fx-canvas" aria-hidden="true"></canvas>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-aurora aurora-1" aria-hidden="true"></div>
+  <div class="bg-aurora aurora-2" aria-hidden="true"></div>
   <div class="noise" aria-hidden="true"></div>
-  <div class="glow" aria-hidden="true"></div>
 
   <header class="top">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <h1 class="brand-name">Panoptes</h1>
+    <div class="brand-row">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <span class="brand-eye"></span>
+        </span>
+        <div class="brand-text">
+          <h1 class="brand-name">Panoptes</h1>
+          <span class="brand-sub">DEMAND&nbsp;INTELLIGENCE&nbsp;ENGINE</span>
+        </div>
+      </div>
+      <div class="meta" id="meta">
+        <span class="meta-chip"><span class="live-dot"></span><span id="version">…</span></span>
+        <span class="meta-chip" id="proxy-pill">proxy off</span>
+      </div>
     </div>
-    <p class="tagline">See if your product has <em>actual</em> demand — find people who asked and got silence.</p>
-    <div class="meta" id="meta">
-      <span id="version">…</span>
-      <span class="dot">·</span>
-      <span id="proxy-pill">proxy off</span>
-    </div>
+    <p class="tagline">See if your product has <em>actual</em> demand — find the people who asked out loud and got <span class="grad-word">silence</span>.</p>
   </header>
+
+  <!-- ── Neural pipeline hero ───────────────────────────── -->
+  <section class="neural-hero" aria-hidden="true">
+    <canvas id="neural-canvas"></canvas>
+    <div class="neural-labels">
+      <span class="nl nl-in">PUBLIC&nbsp;ASKS</span>
+      <span class="nl nl-mid">NEURAL&nbsp;DEMAND&nbsp;PIPELINE</span>
+      <span class="nl nl-out">READY&nbsp;OUTREACH</span>
+    </div>
+  </section>
+
+  <div class="pipeline-shell">
+    <!-- ── Signature pipeline strip ─────────────────────── -->
+    <div class="pipeline" id="pipeline" aria-hidden="true">
+      <div class="pipe-stage" data-stage="0"><span class="pipe-dot"></span><span class="pipe-label">Offer</span></div>
+      <div class="pipe-link"></div>
+      <div class="pipe-stage" data-stage="1"><span class="pipe-dot"></span><span class="pipe-label">Hunt asks</span></div>
+      <div class="pipe-link"></div>
+      <div class="pipe-stage" data-stage="2"><span class="pipe-dot"></span><span class="pipe-label">Score silence</span></div>
+      <div class="pipe-link"></div>
+      <div class="pipe-stage" data-stage="3"><span class="pipe-dot"></span><span class="pipe-label">Enrich</span></div>
+      <div class="pipe-link"></div>
+      <div class="pipe-stage" data-stage="4"><span class="pipe-dot"></span><span class="pipe-label">Deepen</span></div>
+      <div class="pipe-link"></div>
+      <div class="pipe-stage" data-stage="5"><span class="pipe-dot"></span><span class="pipe-label">Draft</span></div>
+    </div>
+  </div>
 
   <main class="layout">
     <section class="panel radar-panel hero-panel">
@@ -34,7 +71,7 @@
       </div>
 
       <div id="mode-radar">
-        <h2>Does this have real demand?</h2>
+        <h2><span class="panel-glyph"></span>Does this have real demand?</h2>
         <p class="hint">Paste what you sell. Panoptes hunts public asks with <strong>0–2 replies</strong>, scores silence, scrapes free public contacts, deepens socials, and drafts a first-responder reply that answers <em>their</em> exact question.</p>
 
         <label class="field">
@@ -114,7 +151,7 @@
       </div>
 
       <div id="mode-discover" hidden>
-        <h2>Find business contacts</h2>
+        <h2><span class="panel-glyph"></span>Find business contacts</h2>
         <p class="hint">Search Google/Yahoo businesses + Reddit + GitHub. Enrichment is optional — turn it off for a fast lead list, or require email+phone when you need dial-ready rows.</p>
 
         <label class="field">
@@ -143,7 +180,8 @@
           <span>Only keep leads with <strong>both</strong> email + phone</span>
         </label>
 
-        <div class="lead-target-row">          <label class="field lead-target-field">
+        <div class="lead-target-row">
+          <label class="field lead-target-field">
             <span>How many leads</span>
             <select id="target-leads">
               <option value="25">25 leads</option>
@@ -194,8 +232,120 @@
       </div>
     </section>
 
+    <!-- ── AI engine ──────────────────────────────────────── -->
+    <section class="panel ai-panel">
+      <h2>
+        <span class="panel-glyph"></span>AI engine
+        <span class="ai-mode-pill" id="ai-mode-pill">checking…</span>
+      </h2>
+      <p class="hint">Turns unanswered asks into <strong>answers</strong> — then ranks, graphs, forecasts and learns from outcomes. Clustering, BM25 matching, PageRank, intent and OLS forecasting run free on your machine. Add an OpenAI or Anthropic key to unlock written solutions.</p>
+
+      <div class="ai-actions">
+        <button type="button" class="btn primary" id="ai-cockpit-btn">Run full AI cockpit</button>
+        <button type="button" class="btn ghost" id="ai-brief-btn">Demand verdict</button>
+        <button type="button" class="btn ghost" id="ai-solve-btn">Solve top asks</button>
+        <button type="button" class="btn ghost" id="ai-offer-btn">Offer doctor</button>
+      </div>
+      <p class="status" id="ai-status" hidden></p>
+
+      <!-- cockpit advanced layers -->
+      <div class="ai-block" id="ai-cockpit" hidden>
+        <div class="algo-strip" id="ai-algo-strip"></div>
+
+        <div class="verdict-row">
+          <div class="score-ring" id="ai-cockpit-score-ring" style="--pct:0">
+            <div class="score-inner">
+              <strong id="ai-cockpit-score">0</strong>
+              <span>demand</span>
+            </div>
+          </div>
+          <div class="verdict-text">
+            <h3 id="ai-cockpit-verdict">—</h3>
+            <p id="ai-cockpit-reasoning" class="hint"></p>
+            <div class="stat-chips" id="ai-cockpit-chips"></div>
+          </div>
+        </div>
+
+        <h3 class="subhead">Offer ↔ ask fit <em>(BM25 + n-grams)</em></h3>
+        <div class="match-summary" id="ai-match-summary"></div>
+        <div class="ranked-list" id="ai-ranked"></div>
+
+        <h3 class="subhead">Priority intel <em>(intent · stage · urgency · reply odds)</em></h3>
+        <div class="intel-list" id="ai-intel-list"></div>
+
+        <h3 class="subhead">Demand graph hubs <em>(PageRank)</em></h3>
+        <p class="hint" id="ai-graph-insight"></p>
+        <div class="voc-chips" id="ai-graph-hubs"></div>
+
+        <h3 class="subhead">Buyer personas</h3>
+        <div class="persona-list" id="ai-personas"></div>
+
+        <h3 class="subhead">Objections mined</h3>
+        <ul class="pain-list" id="ai-objections"></ul>
+
+        <h3 class="subhead">Demand forecast <em>(OLS)</em></h3>
+        <div class="forecast-card" id="ai-forecast"></div>
+
+        <h3 class="subhead">Outcome memory <em>(learns from your tags)</em></h3>
+        <div class="memory-card" id="ai-memory"></div>
+      </div>
+
+      <!-- verdict -->
+      <div class="ai-block" id="ai-brief" hidden>
+        <div class="verdict-row">
+          <div class="score-ring" id="ai-score-ring" style="--pct:0">
+            <div class="score-inner">
+              <strong id="ai-score">0</strong>
+              <span>demand</span>
+            </div>
+          </div>
+          <div class="verdict-text">
+            <h3 id="ai-verdict">—</h3>
+            <p id="ai-reasoning" class="hint"></p>
+            <div class="stat-chips" id="ai-stat-chips"></div>
+          </div>
+        </div>
+
+        <h3 class="subhead">Demand clusters</h3>
+        <div class="cluster-list" id="ai-clusters"></div>
+
+        <h3 class="subhead">Voice of customer <em>(their exact words)</em></h3>
+        <div class="voc-chips" id="ai-voc"></div>
+
+        <h3 class="subhead">Top pains</h3>
+        <ul class="pain-list" id="ai-pains"></ul>
+
+        <h3 class="subhead">Next actions</h3>
+        <ul class="action-list" id="ai-actions-list"></ul>
+        <p class="ai-risk" id="ai-risk" hidden></p>
+      </div>
+
+      <!-- offer doctor -->
+      <div class="ai-block" id="ai-offer" hidden>
+        <h3 class="subhead">Offer diagnosis</h3>
+        <div class="offer-fit"><span id="ai-offer-score">0</span><small>/100 language fit with real buyers</small></div>
+        <div class="bar"><div class="bar-fill" id="ai-offer-bar"></div></div>
+        <ul class="pain-list" id="ai-offer-problems"></ul>
+        <div id="ai-offer-rewrite-wrap" hidden>
+          <h3 class="subhead">Rewritten in their words</h3>
+          <blockquote class="ai-rewrite" id="ai-offer-rewrite"></blockquote>
+        </div>
+        <div class="word-cols">
+          <div><h3 class="subhead">Adopt these words</h3><div class="voc-chips" id="ai-words-use"></div></div>
+          <div><h3 class="subhead">Drop this jargon</h3><div class="voc-chips drop" id="ai-words-drop"></div></div>
+        </div>
+      </div>
+
+      <!-- batch solutions -->
+      <div class="ai-block" id="ai-solutions" hidden>
+        <h3 class="subhead">Solved asks</h3>
+        <div id="ai-solution-list"></div>
+      </div>
+    </section>
+
+    <div class="panel-columns">
     <section class="panel scrape-panel">
-      <h2>Deep scrape</h2>
+      <h2><span class="panel-glyph"></span>Deep scrape</h2>
       <p class="hint">Paste usernames to pull full profiles after Radar finds handles.</p>
 
       <label class="field">
@@ -227,7 +377,7 @@
     </section>
 
     <section class="panel job-panel">
-      <h2>Live scrape job</h2>
+      <h2><span class="panel-glyph"></span>Live scrape job</h2>
       <div id="job-empty" class="empty">No active job yet.</div>
       <div id="job-view" hidden>
         <div class="job-head">
@@ -261,7 +411,7 @@
     </section>
 
     <section class="panel settings-panel">
-      <h2>Settings</h2>
+      <h2><span class="panel-glyph"></span>Settings</h2>
 
       <h3 class="subhead">API keys <em>(optional — unlock better scraping)</em></h3>
       <p class="hint">Keys stay on your machine in <code>.env</code>. Leave blank to keep the free path. Paste a new value to replace; leave empty when saving to keep the current key.</p>
@@ -295,27 +445,29 @@
       <div class="provider-pills" id="provider-pills"></div>
 
       <h3 class="subhead">Auth &amp; network</h3>
-      <label class="field">
-        <span>LinkedIn cookie <em>(li_at)</em></span>
-        <input type="password" id="linkedin_cookie" placeholder="Paste li_at cookie" autocomplete="off" />
-      </label>
-      <label class="field">
-        <span>Proxy URL</span>
-        <input type="text" id="proxy" placeholder="http://user:pass@host:port" />
-      </label>
-      <label class="field">
-        <span>Proxy file path</span>
-        <input type="text" id="proxy_file" placeholder="proxies.txt" />
-      </label>
-      <div class="row">
-        <label class="field half">
-          <span>Delay min (s)</span>
-          <input type="number" id="delay_min" step="0.1" min="0" />
+      <div class="keys-grid">
+        <label class="field">
+          <span>LinkedIn cookie <em>(li_at)</em></span>
+          <input type="password" id="linkedin_cookie" placeholder="Paste li_at cookie" autocomplete="off" />
         </label>
-        <label class="field half">
-          <span>Delay max (s)</span>
-          <input type="number" id="delay_max" step="0.1" min="0" />
+        <label class="field">
+          <span>Proxy URL</span>
+          <input type="text" id="proxy" placeholder="http://user:pass@host:port" />
         </label>
+        <label class="field">
+          <span>Proxy file path</span>
+          <input type="text" id="proxy_file" placeholder="proxies.txt" />
+        </label>
+        <div class="row">
+          <label class="field half">
+            <span>Delay min (s)</span>
+            <input type="number" id="delay_min" step="0.1" min="0" />
+          </label>
+          <label class="field half">
+            <span>Delay max (s)</span>
+            <input type="number" id="delay_max" step="0.1" min="0" />
+          </label>
+        </div>
       </div>
       <label class="check">
         <input type="checkbox" id="free_proxy" />
@@ -329,10 +481,11 @@
     </section>
 
     <section class="panel exports-panel">
-      <h2>Exports</h2>
+      <h2><span class="panel-glyph"></span>Exports</h2>
       <ul id="exports-list" class="exports"></ul>
       <p class="empty" id="exports-empty">No CSV exports yet.</p>
     </section>
+    </div>
   </main>
 
   <footer class="foot">
@@ -341,6 +494,7 @@
     <span>Proprietary license</span>
   </footer>
 
+  <script src="/static/js/fx.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>
