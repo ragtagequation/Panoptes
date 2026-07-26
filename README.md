@@ -131,7 +131,48 @@ Tag asks as booked / replied / ignored. New asks retrieve nearest past wins via 
 #### Offer doctor
 Scores language fit against buyer vocabulary, strikes consultant buzzwords, rewrites the offer in their words (generative when a key is present).
 
+#### First-Responder Moat *(white space)*
+Estimates **hours left** before the crowd answers a silent ask — exponential
+decay fitted on similar historical threads. Answer closing windows first.
+DemandHunter / Matchstick / LeadIntent do not ship this.
+
+#### Competitor Vacuum + Do-Nothing Share *(white space)*
+Sizes three slices of demand: named tools that failed, status-quo / DIY
+("do nothing" often holds more share than any vendor), and greenfield asks
+with no incumbent. Market-entry research calls do-nothing the gap every
+competitive map misses.
+
+#### Blue-Ocean / Saturation Map *(white space)*
+Per theme: high silence + few vendor mentions = blue ocean; reply-dense or
+comparison-heavy = saturated. Enter blue ocean; wedge saturated themes.
+
+#### Demand Contagion *(white space)*
+Ranks asks by **cascade value** — answering a hub/bridge ask unlocks adjacent
+themes via shared vocabulary (influence pathways without a GPU GNN).
+
+#### Dialect Gap *(white space)*
+Quantifies how foreign your offer language is vs buyer dialect, with an
+explicit migration map (`your word → their word`). The #1 campaign-failure
+mode according to market-entry research.
+
+#### ICP Auto-Discovery *(white space)*
+Induces an Ideal Customer Profile from tagged wins (intent · stage · signature
+words · anti-words) — inverse of hand-written ICP filters.
+
+#### Evidence Integrity Guard *(white space)*
+Fuzzy-verifies that brief claims and voice-of-customer quotes actually appear
+in stored asks. Competitors say "evidence-backed"; we check.
+
+#### Adversarial Stress Test *(white space)*
+Attacks your offer with personas grounded in real silent asks — severity
+scored, defenses attached. Survive score before you scale outreach.
+
+#### Counterfactual Demand *(white space)*
+"What if I sold X instead?" — re-ranks the existing corpus under an alternate
+offer without re-scraping. Unlocks / loses ask lists + fit deltas.
+
 Hit **Run full AI cockpit** in the UI to fire every layer in one pass.
+Use **Simulate alternate** for counterfactual demand.
 
 ### Also included
 
@@ -155,6 +196,15 @@ Hit **Run full AI cockpit** in the UI to fire every layer in one pass.
 | Forecast | Ordinary least squares on daily volume | Catch rising niches early |
 | Memory | BM25 case retrieval + win/loss lift | Learns from *your* outcomes |
 | Variants | Angle × stage EV scoring | Ship the message with highest expected reply |
+| Moat | Exponential silence half-life | Hours left before the crowd answers |
+| Vacuum | Failed-vendor + status-quo classifier | Do-nothing share competitors miss |
+| Saturation | Silence × vendor-density theme score | Blue ocean vs crowded themes |
+| Contagion | Hub/bridge reach via co-vocab | Which ask unlocks neighbors |
+| Dialect | Jaccard + buzzword gap + migration map | Stop speaking a foreign dialect |
+| ICP | Lift words from tagged wins | Auto-discovered buyer fingerprint |
+| Integrity | Fuzzy quote→ask verification | No hallucinated "evidence" |
+| Stress | Adversarial persona attacks | Survive score before scale |
+| Counterfactual | BM25 re-rank under alt offer | Pivot without re-scraping |
 
 No GPU. No vector DB. No SaaS lock-in. Pure Python, runs on a laptop.
 
@@ -333,6 +383,15 @@ python find_leads.py "dental marketing agencies" --complete-only
 | `GET /api/ai/forecast` | OLS trend + projections |
 | `POST /api/ai/variants` | A/B outreach variants |
 | `GET /api/ai/memory` | Outcome-trained patterns |
+| `GET /api/ai/moat` | First-responder moat board |
+| `GET /api/ai/vacuum` | Competitor vacuum + do-nothing share |
+| `GET /api/ai/saturation` | Blue-ocean / saturated themes |
+| `GET /api/ai/contagion` | Demand contagion ranking |
+| `POST /api/ai/dialect` | Dialect gap + migration map |
+| `GET /api/ai/icp` | ICP auto-discovery from wins |
+| `POST /api/ai/stress` | Adversarial offer stress test |
+| `POST /api/ai/counterfactual` | Alternate-offer demand simulation |
+| `GET /api/ai/integrity` | Evidence integrity check |
 | `GET /api/ai/clusters` | TF-IDF clusters |
 
 ```env
@@ -400,6 +459,8 @@ app/ai/         AI engine
                   nlp · intel · match · graph · personas
                   forecast · variants · memory · solutions
                   synthesis · pipeline · engine
+                  moat · vacuum · saturation · contagion
+                  dialect · icp · integrity · stress · counterfactual
 app/demand/     Demand Radar (offers, silence, deepen, drafts, store)
 app/discovery/  Reddit / web / contacts / extract
 app/scrapers/   Platform profile scrapers
