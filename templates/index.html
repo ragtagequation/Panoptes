@@ -246,6 +246,18 @@
         <button type="button" class="btn ghost" id="ai-solve-btn">Solve top asks</button>
         <button type="button" class="btn ghost" id="ai-offer-btn">Offer doctor</button>
       </div>
+      <div class="row" style="margin:0.5rem 0 0.2rem; gap:0.5rem; flex-wrap:wrap; align-items:end">
+        <label class="field" style="flex:1; min-width:220px; margin:0">
+          <span>Counterfactual offer</span>
+          <input id="ai-alternate" type="text" placeholder="What if I sold X instead?" />
+        </label>
+        <button type="button" class="btn ghost" id="ai-counterfactual-btn">Simulate alternate</button>
+      </div>
+      <div class="ai-block" id="ai-counterfactual" hidden>
+        <h3 class="subhead">Counterfactual demand</h3>
+        <div class="forecast-card" id="ai-cf-card"></div>
+        <div class="ranked-list" id="ai-cf-unlocked"></div>
+      </div>
       <p class="status" id="ai-status" hidden></p>
 
       <!-- cockpit advanced layers -->
@@ -288,6 +300,37 @@
 
         <h3 class="subhead">Outcome memory <em>(learns from your tags)</em></h3>
         <div class="memory-card" id="ai-memory"></div>
+
+        <h3 class="subhead">First-responder moat <em>(hours until the crowd answers)</em></h3>
+        <p class="hint" id="ai-moat-insight"></p>
+        <div class="intel-list" id="ai-moat-list"></div>
+
+        <h3 class="subhead">Competitor vacuum + do-nothing share</h3>
+        <p class="hint" id="ai-vacuum-insight"></p>
+        <div class="stat-chips" id="ai-vacuum-chips"></div>
+        <div class="voc-chips" id="ai-vacuum-vendors"></div>
+
+        <h3 class="subhead">Blue ocean vs saturated themes</h3>
+        <p class="hint" id="ai-sat-insight"></p>
+        <div class="intel-list" id="ai-sat-list"></div>
+
+        <h3 class="subhead">Demand contagion <em>(answer these to unlock neighbors)</em></h3>
+        <p class="hint" id="ai-contagion-insight"></p>
+        <div class="ranked-list" id="ai-contagion-list"></div>
+
+        <h3 class="subhead">Dialect gap <em>(your words vs theirs)</em></h3>
+        <div class="forecast-card" id="ai-dialect"></div>
+
+        <h3 class="subhead">ICP auto-discovery</h3>
+        <div class="memory-card" id="ai-icp"></div>
+
+        <h3 class="subhead">Evidence integrity</h3>
+        <div class="stat-chips" id="ai-integrity-chips"></div>
+        <p class="hint" id="ai-integrity-insight"></p>
+
+        <h3 class="subhead">Adversarial stress test</h3>
+        <div class="forecast-card" id="ai-stress-head"></div>
+        <ul class="pain-list" id="ai-stress-attacks"></ul>
       </div>
 
       <!-- verdict -->

@@ -8,15 +8,23 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.ai.contagion import contagion_rank
+from app.ai.dialect import dialect_gap
 from app.ai.engine import ai_mode
 from app.ai.forecast import forecast_demand
 from app.ai.graph import build_demand_graph
+from app.ai.icp import discover_icp
+from app.ai.integrity import verify_brief_pains
 from app.ai.intel import analyze_many
 from app.ai.match import match_summary, rank_asks
 from app.ai.memory import retrieve_cases, training_signal
+from app.ai.moat import moat_board
 from app.ai.personas import infer_personas
-from app.ai.synthesis import cluster_asks, compute_signal, demand_brief
+from app.ai.saturation import saturation_map
 from app.ai.solutions import solve_ask
+from app.ai.stress import stress_test
+from app.ai.synthesis import cluster_asks, compute_signal, demand_brief
+from app.ai.vacuum import analyze_vacuum
 
 
 def run_cockpit(
@@ -35,9 +43,17 @@ def run_cockpit(
     personas = infer_personas(leads)
     forecast = forecast_demand(leads)
     memory = training_signal(leads)
-
-    # Lightweight brief without a second LLM call if we already have heuristic path
     brief = demand_brief(leads, offer_info)
+
+    # Novel white-space layers
+    moat = moat_board(leads, limit=10)
+    vacuum = analyze_vacuum(leads)
+    saturation = saturation_map(leads)
+    contagion = contagion_rank(leads, limit=8)
+    dialect = dialect_gap(offer, leads) if offer else {"gap_score": 0, "label": "n/a", "insight": "Enter an offer to measure dialect gap."}
+    icp = discover_icp(leads)
+    integrity = verify_brief_pains(brief, leads)
+    stress = stress_test(offer, leads) if offer else {"attacks": [], "survive_score": 0, "verdict": "Enter an offer to stress-test."}
 
     return {
         "source": ai_mode(),
@@ -61,6 +77,14 @@ def run_cockpit(
         "objections": personas.get("objections") or [],
         "forecast": forecast,
         "memory": memory,
+        "moat": moat,
+        "vacuum": vacuum,
+        "saturation": saturation,
+        "contagion": contagion,
+        "dialect": dialect,
+        "icp": icp,
+        "integrity": integrity,
+        "stress": stress,
         "capabilities": [
             "answer_engine",
             "demand_verdict",
@@ -77,6 +101,17 @@ def run_cockpit(
             "ab_variants",
             "outcome_rag",
             "offer_doctor",
+            # white-space (not in DemandHunter / Matchstick / LeadIntent)
+            "first_responder_moat",
+            "competitor_vacuum",
+            "do_nothing_share",
+            "blue_ocean_saturation",
+            "demand_contagion",
+            "dialect_gap",
+            "icp_autodiscovery",
+            "evidence_integrity",
+            "adversarial_stress_test",
+            "counterfactual_demand",
         ],
     }
 
@@ -86,28 +121,35 @@ def solve_with_memory(
     corpus: list[dict[str, Any]],
     offer_info: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Answer Engine augmented with nearest past wins + ask intelligence."""
+    """Answer Engine augmented with nearest past wins + ask intelligence + moat."""
     from app.ai.intel import analyze_ask
+    from app.ai.moat import first_responder_moat
 
     solution = solve_ask(lead, offer_info)
     intel = analyze_ask(lead)
     cases = retrieve_cases(lead, corpus, limit=4)
+    moat = first_responder_moat(lead, corpus)
 
-    # Enrich the solution packet
     solution["intel"] = intel
+    solution["moat"] = moat
     solution["similar_cases"] = cases.get("cases") or []
     solution["memory_insight"] = cases.get("insight") or ""
     if cases.get("patterns"):
         solution["learned_patterns"] = cases["patterns"]
 
-    # Boost confidence slightly when a near win exists
-    near_win = next((c for c in (cases.get("cases") or []) if c.get("polarity") == "win" and c["similarity"] >= 40), None)
+    near_win = next(
+        (c for c in (cases.get("cases") or []) if c.get("polarity") == "win" and c["similarity"] >= 40),
+        None,
+    )
     if near_win and not solution.get("error"):
         solution["confidence"] = min(100, int(solution.get("confidence") or 0) + 8)
-        if solution.get("assumption") == "" or "without a language model" in (solution.get("assumption") or ""):
-            pass
         tip = f" Similar win (sim {near_win['similarity']}%): “{near_win['quote'][:80]}”."
         if tip not in (solution.get("helpful_note") or ""):
             solution["helpful_note"] = ((solution.get("helpful_note") or "") + tip).strip()
+
+    if moat.get("urgency") == "closing_fast" and solution.get("helpful_note"):
+        solution["helpful_note"] = (
+            f"[Moat ~{moat['moat_hours']}h] " + solution["helpful_note"]
+        )
 
     return solution

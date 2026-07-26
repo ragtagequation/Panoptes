@@ -182,6 +182,17 @@ class CockpitRequest(BaseModel):
     limit: int = Field(default=150, ge=1, le=500)
 
 
+class CounterfactualRequest(BaseModel):
+    offer: str = ""
+    alternate: str = Field(min_length=3)
+    limit: int = Field(default=150, ge=1, le=500)
+
+
+class StressRequest(BaseModel):
+    offer: str = Field(min_length=3)
+    limit: int = Field(default=150, ge=1, le=500)
+
+
 @app.get("/", response_class=HTMLResponse)
 def index() -> HTMLResponse:
     index_path = TEMPLATES_DIR / "index.html"
@@ -352,12 +363,17 @@ def ai_status() -> dict[str, Any]:
         "capabilities": [
             "solve", "brief", "offer_doctor", "cluster", "cockpit",
             "match", "intel", "graph", "personas", "forecast",
-            "variants", "memory",
+            "variants", "memory", "moat", "vacuum", "saturation",
+            "contagion", "dialect", "icp", "integrity", "stress",
+            "counterfactual",
         ],
         "algorithms": [
             "tfidf_clustering", "bm25_ranking", "char_ngram_jaccard",
             "naive_bayes_intent", "logistic_reply_odds", "pagerank_centrality",
             "ols_forecast", "outcome_rag", "persona_bucketing",
+            "exponential_moat_decay", "competitor_vacuum", "blue_ocean_score",
+            "demand_contagion", "dialect_gap", "icp_lift", "evidence_integrity",
+            "adversarial_stress", "counterfactual_rerank",
         ],
     }
 
@@ -534,6 +550,83 @@ def ai_memory(limit: int = 500, offer: str = "") -> dict[str, Any]:
 
     leads = _ai_leads(limit, offer)
     return training_signal(leads)
+
+
+@app.get("/api/ai/moat", dependencies=[Depends(_require_api_key)])
+def ai_moat(limit: int = 150, offer: str = "") -> dict[str, Any]:
+    """First-responder moat — hours left before the crowd answers."""
+    from app.ai.moat import moat_board
+
+    return moat_board(_ai_leads(limit, offer), limit=15)
+
+
+@app.get("/api/ai/vacuum", dependencies=[Depends(_require_api_key)])
+def ai_vacuum(limit: int = 200, offer: str = "") -> dict[str, Any]:
+    """Competitor vacuum + do-nothing share of demand."""
+    from app.ai.vacuum import analyze_vacuum
+
+    return analyze_vacuum(_ai_leads(limit, offer))
+
+
+@app.get("/api/ai/saturation", dependencies=[Depends(_require_api_key)])
+def ai_saturation(limit: int = 200, offer: str = "") -> dict[str, Any]:
+    """Blue-ocean vs saturated theme map."""
+    from app.ai.saturation import saturation_map
+
+    return saturation_map(_ai_leads(limit, offer))
+
+
+@app.get("/api/ai/contagion", dependencies=[Depends(_require_api_key)])
+def ai_contagion(limit: int = 200, offer: str = "") -> dict[str, Any]:
+    """Demand contagion — which ask unlocks the most adjacent demand."""
+    from app.ai.contagion import contagion_rank
+
+    return contagion_rank(_ai_leads(limit, offer), limit=12)
+
+
+@app.post("/api/ai/dialect", dependencies=[Depends(_require_api_key)])
+def ai_dialect(body: CockpitRequest) -> dict[str, Any]:
+    """Dialect gap between your offer language and buyer language."""
+    from app.ai.dialect import dialect_gap
+
+    if not (body.offer or "").strip():
+        raise HTTPException(422, "Provide an offer")
+    return dialect_gap(body.offer, _ai_leads(body.limit, body.offer))
+
+
+@app.get("/api/ai/icp", dependencies=[Depends(_require_api_key)])
+def ai_icp(limit: int = 500, offer: str = "") -> dict[str, Any]:
+    """Auto-discover ICP fingerprint from tagged win outcomes."""
+    from app.ai.icp import discover_icp
+
+    return discover_icp(_ai_leads(limit, offer))
+
+
+@app.post("/api/ai/stress", dependencies=[Depends(_require_api_key)])
+def ai_stress(body: StressRequest) -> dict[str, Any]:
+    """Adversarial offer stress test grounded in real asks."""
+    from app.ai.stress import stress_test
+
+    return stress_test(body.offer, _ai_leads(body.limit))
+
+
+@app.post("/api/ai/counterfactual", dependencies=[Depends(_require_api_key)])
+def ai_counterfactual(body: CounterfactualRequest) -> dict[str, Any]:
+    """Rescore demand under an alternate offer without re-scraping."""
+    from app.ai.counterfactual import counterfactual
+
+    return counterfactual(body.offer, body.alternate, _ai_leads(body.limit))
+
+
+@app.get("/api/ai/integrity", dependencies=[Depends(_require_api_key)])
+def ai_integrity(limit: int = 200, offer: str = "") -> dict[str, Any]:
+    """Verify that brief claims cite real stored asks."""
+    from app.ai.integrity import verify_brief_pains
+    from app.ai.synthesis import demand_brief
+
+    leads = _ai_leads(limit, offer)
+    brief = demand_brief(leads, {"offer": offer})
+    return verify_brief_pains(brief, leads)
 
 
 @app.get("/api/radar/watches", dependencies=[Depends(_require_api_key)])

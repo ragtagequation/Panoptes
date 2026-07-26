@@ -755,6 +755,198 @@ function renderCockpit(data) {
     for (const w of mem.top_win_words) wrap.appendChild(chip(escapeHtml(w), "voc-chip"));
     mHost.appendChild(wrap);
   }
+
+  // First-responder moat
+  const moat = data.moat || {};
+  $("#ai-moat-insight").textContent = moat.insight || "";
+  const ml = $("#ai-moat-list");
+  ml.innerHTML = "";
+  for (const m of moat.closing_now || []) {
+    const row = document.createElement("div");
+    row.className = "intel-row";
+    row.innerHTML =
+      `<span class="fit-pill">${m.moat_hours}h left</span>` +
+      `<span class="stage-pill">${escapeHtml(m.urgency || "")}</span>` +
+      `<span class="odds-pill">P24h ${m.p_still_open_24h}</span>` +
+      `<div style="margin-top:0.3rem">“${escapeHtml(m.quote || "")}”</div>`;
+    ml.appendChild(row);
+  }
+  if (!(moat.closing_now || []).length) {
+    ml.innerHTML = `<p class="empty">No closing first-responder windows right now.</p>`;
+  }
+
+  // Vacuum
+  const vac = data.vacuum || {};
+  $("#ai-vacuum-insight").textContent = vac.insight || "";
+  const vc = $("#ai-vacuum-chips");
+  vc.innerHTML = "";
+  const slices = vac.slices || {};
+  Object.entries(slices).forEach(([k, v]) => vc.appendChild(chip(`<b>${v}%</b> ${k.replace(/_/g, " ")}`)));
+  vc.appendChild(chip(`do-nothing <b>${vac.do_nothing_share ?? 0}%</b>`));
+  const vv = $("#ai-vacuum-vendors");
+  vv.innerHTML = "";
+  for (const f of vac.failed_vendors || []) {
+    vv.appendChild(chip(escapeHtml(`${f.vendor} ×${f.mentions}`), "voc-chip"));
+  }
+
+  // Saturation
+  const sat = data.saturation || {};
+  $("#ai-sat-insight").textContent = sat.insight || "";
+  const sl = $("#ai-sat-list");
+  sl.innerHTML = "";
+  for (const t of sat.themes || []) {
+    const row = document.createElement("div");
+    row.className = "intel-row";
+    row.innerHTML =
+      `<span class="fit-pill">blue ${t.blue_ocean_score}</span>` +
+      `<span class="stage-pill">sat ${t.saturation_score}</span>` +
+      `<span class="intent-pill">${escapeHtml(t.label)}</span>` +
+      `<strong style="margin-left:0.35rem">${escapeHtml(t.theme)}</strong>` +
+      `<div class="muted" style="margin-top:0.3rem">${escapeHtml(t.play || "")}</div>`;
+    sl.appendChild(row);
+  }
+
+  // Contagion
+  const con = data.contagion || {};
+  $("#ai-contagion-insight").textContent = con.insight || "";
+  const clist = $("#ai-contagion-list");
+  clist.innerHTML = "";
+  for (const r of con.ranked || []) {
+    const row = document.createElement("div");
+    row.className = "ranked-row";
+    row.innerHTML =
+      `<span class="fit-pill">cascade ${r.cascade_score}</span>` +
+      `<span class="odds-pill">reach ${r.reach}</span>` +
+      `<div style="margin-top:0.3rem">“${escapeHtml(r.quote || "")}”</div>` +
+      `<div class="muted">${escapeHtml(r.why || "")}</div>`;
+    clist.appendChild(row);
+  }
+
+  // Dialect
+  const dia = data.dialect || {};
+  const dHost = $("#ai-dialect");
+  dHost.innerHTML = "";
+  const dTrend = document.createElement("div");
+  dTrend.className = "trend";
+  dTrend.textContent = `${dia.label || "n/a"} · gap ${dia.gap_score ?? 0}/100`;
+  dHost.appendChild(dTrend);
+  const dHint = document.createElement("p");
+  dHint.className = "hint";
+  dHint.textContent = dia.insight || dia.error || "";
+  dHost.appendChild(dHint);
+  if (dia.migrations?.length) {
+    const wrap = document.createElement("div");
+    wrap.className = "voc-chips";
+    wrap.style.marginTop = "0.4rem";
+    for (const m of dia.migrations.slice(0, 8)) {
+      wrap.appendChild(chip(escapeHtml(`${m.from} → ${m.to}`), "voc-chip"));
+    }
+    dHost.appendChild(wrap);
+  }
+
+  // ICP
+  const icp = data.icp || {};
+  const iHost = $("#ai-icp");
+  iHost.innerHTML = "";
+  const iHint = document.createElement("p");
+  iHint.className = "hint";
+  iHint.textContent = icp.insight || "";
+  iHost.appendChild(iHint);
+  if (icp.ready && icp.fingerprint?.signature_words?.length) {
+    const wrap = document.createElement("div");
+    wrap.className = "voc-chips";
+    wrap.style.marginTop = "0.4rem";
+    for (const w of icp.fingerprint.signature_words) wrap.appendChild(chip(escapeHtml(w), "voc-chip"));
+    iHost.appendChild(wrap);
+  }
+
+  // Integrity
+  const integ = data.integrity || {};
+  const ic = $("#ai-integrity-chips");
+  ic.innerHTML = "";
+  ic.appendChild(chip(`integrity <b>${integ.integrity_score ?? 0}</b>/100`));
+  ic.appendChild(chip(`verified <b>${integ.verified ?? 0}</b>/${integ.total ?? 0}`));
+  $("#ai-integrity-insight").textContent = integ.insight || "";
+
+  // Stress
+  const stress = data.stress || {};
+  const sHead = $("#ai-stress-head");
+  sHead.innerHTML = "";
+  const sTrend = document.createElement("div");
+  sTrend.className = "trend";
+  sTrend.textContent = `survive ${stress.survive_score ?? 0}/100`;
+  sHead.appendChild(sTrend);
+  const sHint = document.createElement("p");
+  sHint.className = "hint";
+  sHint.textContent = stress.verdict || "";
+  sHead.appendChild(sHint);
+  const sa = $("#ai-stress-attacks");
+  sa.innerHTML = "";
+  for (const a of stress.attacks || []) {
+    const li = document.createElement("li");
+    li.innerHTML =
+      `<span class="pain-freq">sev ${a.severity}</span>` +
+      `<strong>${escapeHtml(a.persona || "")} · ${escapeHtml(a.objection || "")}</strong>` +
+      `<em>${escapeHtml(a.attack || "")}</em>` +
+      `<div class="muted" style="margin-top:0.25rem">Defense: ${escapeHtml(a.defense || "")}</div>`;
+    sa.appendChild(li);
+  }
+}
+
+async function runCounterfactual() {
+  const status = $("#ai-status");
+  const btn = $("#ai-counterfactual-btn");
+  const alternate = ($("#ai-alternate").value || "").trim();
+  if (alternate.length < 3) {
+    setStatus(status, "Enter an alternate offer to simulate.", true);
+    return;
+  }
+  try {
+    btn.disabled = true;
+    setStatus(status, "Simulating counterfactual demand…");
+    const data = await api("/api/ai/counterfactual", {
+      method: "POST",
+      body: JSON.stringify({
+        offer: offerContext().offer,
+        alternate,
+        limit: 150,
+      }),
+    });
+    if (data.error) throw new Error(data.error);
+    $("#ai-counterfactual").hidden = false;
+    const card = $("#ai-cf-card");
+    card.innerHTML = "";
+    const t = document.createElement("div");
+    t.className = "trend";
+    t.textContent = `${data.verdict} · Δavg ${data.delta_avg_fit >= 0 ? "+" : ""}${data.delta_avg_fit}`;
+    card.appendChild(t);
+    const h = document.createElement("p");
+    h.className = "hint";
+    h.textContent = data.insight || "";
+    card.appendChild(h);
+    const metrics = document.createElement("div");
+    metrics.className = "forecast-metrics";
+    metrics.appendChild(chip(`current top <b>${data.current?.top_fit ?? 0}</b>`));
+    metrics.appendChild(chip(`alt top <b>${data.alternate?.top_fit ?? 0}</b>`));
+    metrics.appendChild(chip(`unlocked <b>${(data.unlocked_asks || []).length}</b>`));
+    card.appendChild(metrics);
+    const ul = $("#ai-cf-unlocked");
+    ul.innerHTML = "";
+    for (const r of data.unlocked_asks || []) {
+      const row = document.createElement("div");
+      row.className = "ranked-row";
+      row.innerHTML =
+        `<span class="fit-pill">${r.fit_score}% fit</span>` +
+        `<div style="margin-top:0.3rem">“${escapeHtml(r.quote || "")}”</div>`;
+      ul.appendChild(row);
+    }
+    setStatus(status, `Counterfactual ready (${data.verdict}).`);
+    scheduleMasonry();
+  } catch (err) {
+    setStatus(status, err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function runBrief() {
@@ -835,6 +1027,7 @@ async function runOfferDoctor() {
 function solutionCard(entry) {
   const s = entry.solution || entry;
   const intel = s.intel || {};
+  const moat = s.moat || {};
   const card = document.createElement("article");
   card.className = "solution-card";
   const steps = (s.steps || [])
@@ -845,6 +1038,9 @@ function solutionCard(entry) {
       `<span class="stage-pill">${escapeHtml(intel.buying_stage || "")}</span>` +
       `<span class="odds-pill">${intel.reply_odds ?? "—"}% odds</span>`
     : "";
+  const moatPill = moat.moat_hours != null
+    ? `<span class="fit-pill">${moat.moat_hours}h moat</span>`
+    : "";
   card.innerHTML = `
     <div class="sol-head">
       <span class="sol-conf">${Number(s.confidence || 0)}% confident</span>
@@ -853,6 +1049,7 @@ function solutionCard(entry) {
       ${s.time_estimate ? `<span>${escapeHtml(s.time_estimate)}</span>` : ""}
       <span>${escapeHtml(s.source || "")}</span>
       ${intelPills}
+      ${moatPill}
     </div>
     ${s.diagnosis ? `<p class="sol-diag">${escapeHtml(s.diagnosis)}</p>` : ""}
     ${steps ? `<ol class="sol-steps">${steps}</ol>` : ""}
@@ -1452,6 +1649,7 @@ $("#ai-cockpit-btn").addEventListener("click", runCockpit);
 $("#ai-brief-btn").addEventListener("click", runBrief);
 $("#ai-solve-btn").addEventListener("click", runSolveBatch);
 $("#ai-offer-btn").addEventListener("click", runOfferDoctor);
+$("#ai-counterfactual-btn").addEventListener("click", runCounterfactual);
 
 (async function init() {
   try {
