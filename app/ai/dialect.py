@@ -1,9 +1,4 @@
-"""Dialect Gap — measure how far your offer language is from buyer dialect.
-
-Market-entry research calls this the #1 reason campaigns fail: companies
-speak a dialect the market doesn't recognise. Offer doctor rewrites; this
-module *quantifies the gap* and builds an explicit migration map.
-"""
+"""Offer language vs buyer dialect gap."""
 
 from __future__ import annotations
 

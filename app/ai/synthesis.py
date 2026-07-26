@@ -1,13 +1,4 @@
-"""Demand synthesis — turn a pile of individual asks into a market verdict.
-
-Three capabilities:
-  cluster_asks   free TF-IDF style clustering of asks into demand themes
-  demand_brief   is there real demand here? evidence-backed verdict
-  offer_doctor   rewrite the user's offer in the words buyers actually used
-
-Clustering is always free (stdlib only). The narrative layers use an LLM when a
-key is present and fall back to extractive summaries when not.
-"""
+"""Clustering, demand brief, offer doctor."""
 
 from __future__ import annotations
 

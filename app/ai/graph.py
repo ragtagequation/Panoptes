@@ -1,9 +1,4 @@
-"""Demand knowledge graph — co-occurrence edges + PageRank-lite centrality.
-
-Treats demand themes as a graph: nodes are stemmed keywords, edges fire when
-two keywords co-occur in the same ask. Centrality surfaces the *structural*
-pains — the ones that bridge multiple themes — which plain TF-IDF misses.
-"""
+"""Keyword co-occurrence graph with PageRank hubs."""
 
 from __future__ import annotations
 

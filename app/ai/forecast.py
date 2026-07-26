@@ -1,9 +1,4 @@
-"""Temporal demand forecast — is this pain growing, flat, or dying?
-
-Fits a simple linear trend on daily ask volume + silence, then projects
-7/14/30-day forward counts. No ML framework required; OLS on a 1-feature
-time index is enough to catch rising niches before competitors do.
-"""
+"""OLS demand trend and forward projections."""
 
 from __future__ import annotations
 

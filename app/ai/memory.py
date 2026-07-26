@@ -1,10 +1,4 @@
-"""Outcome memory — case-based retrieval that learns from what you tagged.
-
-When you mark asks as booked / replied / ignored, those outcomes become a
-training signal. New asks retrieve the nearest past wins (BM25 + char n-grams)
-so solutions and drafts can imitate what actually converted — a free RAG loop
-with no vector DB.
-"""
+"""Outcome-tagged case retrieval."""
 
 from __future__ import annotations
 

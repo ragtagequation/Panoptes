@@ -1,13 +1,4 @@
-"""Competitor Vacuum + Do-Nothing share.
-
-Market-entry research notes that tools map named competitors but miss the
-'do nothing' alternative that often holds more share than any vendor.
-This module sizes three slices of every ask corpus:
-
-  named_failure  — buyer named a tool/agency that failed them (vacuum)
-  status_quo     — living with the pain / DIY / 'just dealing with it'
-  greenfield     — asking with no incumbent mentioned at all
-"""
+"""Failed-vendor vacuum and do-nothing share."""
 
 from __future__ import annotations
 

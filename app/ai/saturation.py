@@ -1,9 +1,4 @@
-"""Blue-Ocean / Saturation scoring per demand theme.
-
-A theme is 'blue ocean' when asks are high-silence AND buyers rarely name
-alternatives. It's 'saturated' when similar threads already have replies or
-vendors are constantly compared. Most tools stop at 'demand exists'.
-"""
+"""Blue-ocean vs saturated theme scores."""
 
 from __future__ import annotations
 

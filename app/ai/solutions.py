@@ -1,9 +1,4 @@
-"""Answer Engine — turn an unanswered public ask into a real, usable solution.
-
-The point of difference: most lead tools write a pitch. This writes the actual
-help first (diagnosis, steps, a deliverable), then a short human note that
-leads with that help. Reciprocity beats cold outreach.
-"""
+"""Help-first solutions for unanswered asks."""
 
 from __future__ import annotations
 

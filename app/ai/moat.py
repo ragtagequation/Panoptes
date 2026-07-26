@@ -1,11 +1,4 @@
-"""First-Responder Moat — estimate how long silence still has value.
-
-Nobody else productizes this: competitors surface intent, but they don't tell
-you *how many hours you have* before the crowd answers and the moat closes.
-
-Model: fit a simple exponential decay on age × remaining silence for similar
-asks, then project the expected reply-arrival time for a fresh unanswered ask.
-"""
+"""Remaining first-responder window on silent asks."""
 
 from __future__ import annotations
 

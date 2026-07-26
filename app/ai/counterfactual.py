@@ -1,9 +1,4 @@
-"""Counterfactual Demand — rescore the corpus under an alternate offer.
-
-Ask: 'what if I sold X instead of Y?' Most tools validate one idea.
-This simulates demand fit under a hypothetical offer without re-scraping,
-by re-ranking existing asks with BM25 against the counterfactual wording.
-"""
+"""Re-rank demand under an alternate offer."""
 
 from __future__ import annotations
 

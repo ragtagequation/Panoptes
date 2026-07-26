@@ -1,9 +1,4 @@
-"""Adversarial Offer Stress Test — attack your offer with synthetic buyer objections.
-
-Generative-agent research is emerging; almost no demand tool stress-tests an
-offer against adversarial personas grounded in *your real silent asks*.
-Free path uses mined objections + persona templates; LLM path writes sharper attacks.
-"""
+"""Adversarial offer stress test."""
 
 from __future__ import annotations
 

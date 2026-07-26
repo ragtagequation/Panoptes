@@ -1,9 +1,4 @@
-"""A/B draft variants + reply-likelihood framing.
-
-Generates multiple outreach angles for one ask (help-first, proof-first,
-scarcity-of-attention, diagnostic), each scored by the reply-odds model so
-you ship the highest-EV message — not the one that sounds cleverest.
-"""
+"""Outreach variants scored by expected reply value."""
 
 from __future__ import annotations
 

@@ -1,8 +1,4 @@
-"""ICP Auto-Discovery — induce an Ideal Customer Profile from tagged wins.
-
-Inverse of scoring: instead of filtering by a hand-written ICP, learn the
-fingerprint of asks that actually converted (booked/replied) vs lost.
-"""
+"""ICP fingerprint from tagged win outcomes."""
 
 from __future__ import annotations
 

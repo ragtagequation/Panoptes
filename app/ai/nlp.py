@@ -1,8 +1,4 @@
-"""Shared NLP primitives used across the Panoptes AI engine.
-
-Pure stdlib — no torch, no spaCy, no paid embeddings. Designed so every
-downstream feature (intent, match, graph, forecast) speaks the same language.
-"""
+"""Tokenize, stem, TF-IDF, BM25, char n-grams."""
 
 from __future__ import annotations
 

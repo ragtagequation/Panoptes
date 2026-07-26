@@ -1,11 +1,4 @@
-"""Per-ask intelligence — intent, urgency, sentiment, buying stage, price signals.
-
-A senior-stack take on lead qualification without a GPU:
-  - Multinomial Naive Bayes–style intent over hand-seeded class priors
-  - Lexicon + punctuation urgency / frustration scorer
-  - Buying-stage classifier (awareness → consideration → decision → post-purchase)
-  - Budget / timeline signal extractor via regex + keyword proximity
-"""
+"""Per-ask intent, urgency, stage, reply odds."""
 
 from __future__ import annotations
 

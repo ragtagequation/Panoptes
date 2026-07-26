@@ -1,9 +1,4 @@
-"""Evidence Integrity — every AI claim must cite a real ask.
-
-Competitors say 'evidence-backed' then hallucinate. This verifier checks that
-quoted fragments actually appear (fuzzy) in stored asks, and scores claim
-integrity. A quiet but important moat for trustworthy demand AI.
-"""
+"""Verify claim evidence against stored asks."""
 
 from __future__ import annotations
 

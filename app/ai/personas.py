@@ -1,8 +1,4 @@
-"""Buyer personas + objection mining from the ask corpus.
-
-Clusters askers into personas by shared intent × stage × vocabulary, then
-mines recurring objections / blockers (budget, trust, time, complexity).
-"""
+"""Intent-stage personas and objection mining."""
 
 from __future__ import annotations
 
@@ -28,7 +24,6 @@ def infer_personas(leads: list[dict[str, Any]], *, max_personas: int = 5) -> dic
     if not leads:
         return {"personas": [], "objections": [], "source": "heuristic"}
 
-    # Bucket by (intent, stage) — a classic CRM segmentation axis
     buckets: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     intel_cache: dict[str, dict[str, Any]] = {}
     for lead in leads:

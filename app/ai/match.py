@@ -1,9 +1,4 @@
-"""Offer↔ask matching — BM25 + character n-gram Jaccard + silence boost.
-
-Ranks every stored ask by how well it fits the user's offer. This is the
-difference between a lead dump and a prioritized pipeline: senior growth
-engineers always score fit before they spend LLM tokens.
-"""
+"""Offer-ask ranking via BM25 + char n-grams."""
 
 from __future__ import annotations
 

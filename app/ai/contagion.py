@@ -1,9 +1,4 @@
-"""Demand contagion — which ask, if answered, unlocks the most adjacent demand.
-
-Inspired by diffusion / influence-pathway research, but applied to silent asks:
-answering a high-centrality bridge ask propagates authority into neighboring
-themes. Most tools rank asks independently; this ranks them by cascade value.
-"""
+"""Cascade value of answering a bridge ask."""
 
 from __future__ import annotations
 

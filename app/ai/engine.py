@@ -1,8 +1,4 @@
-"""Provider-agnostic LLM core for the Panoptes AI engine.
-
-Supports OpenAI and Anthropic. Returns None when no key is configured so
-callers can fall back to free heuristics.
-"""
+"""LLM complete_text / complete_json with OpenAI, Anthropic, or None."""
 
 from __future__ import annotations
 
