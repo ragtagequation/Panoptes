@@ -12,9 +12,11 @@
 
 *Argus Panoptes — the hundred-eyed watcher of Greek myth. Half his eyes slept. The rest never closed.*
 
+**Developed by [@adarsh_aryamaan](https://github.com/adarsh_aryamaan)**
+
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-0b1210?style=for-the-badge&logo=python&logoColor=35e6ff)](https://www.python.org/downloads/)
 [![Free · Self-hosted](https://img.shields.io/badge/free-self--hosted-35e6ff?style=for-the-badge)](#install-in-2-minutes)
-[![AI Engine](https://img.shields.io/badge/AI-15%20algorithms-9a7bff?style=for-the-badge)](#the-ai-engine)
+[![AI Engine](https://img.shields.io/badge/AI-25%2B%20capabilities-9a7bff?style=for-the-badge)](#the-ai-engine)
 [![Public data only](https://img.shields.io/badge/data-public%20only-1f8f68?style=for-the-badge)](#what-panoptes-never-does)
 [![License: Proprietary](https://img.shields.io/badge/license-proprietary-e07a6a?style=for-the-badge)](LICENSE)
 
@@ -33,9 +35,10 @@ A human, on the public internet, stuck, waiting for someone useful.
 1. the exact ask (quote + link)
 2. a silence score + priority intel (intent · stage · urgency · reply odds)
 3. public contact when available
-4. a **help-first solution** (diagnosis, steps, deliverable) — not just a pitch
-5. A/B outreach variants scored by expected value
-6. a demand graph, forecast, personas, and an outcome-trained memory that gets smarter as you tag wins
+4. **firmographics + technographics** from public site copy and HTML fingerprints
+5. a **help-first solution** (diagnosis, steps, deliverable) — not just a pitch
+6. A/B outreach variants scored by expected value
+7. a demand graph, forecast, personas, first-responder moat, and outcome-trained memory
 
 Then you reply. Book the call. Or learn — fast — that nobody is asking.
 
@@ -48,8 +51,9 @@ Then you reply. Book the call. Or learn — fast — that nobody is asking.
 | “Would you buy this?” surveys | People already saying **I need this** |
 | Cold lists from Apollo | Warm asks ranked by **BM25 fit + silence** |
 | Generic “saw your post” spam | Evidence-locked drafts + **help-first Answer Engine** |
-| Guess your ICP | **Personas + objection mining** from real asks |
-| Static lead dump | **PageRank demand graph · OLS forecast · outcome RAG** |
+| Guess your ICP | **Personas + ICP auto-discovery** from real wins |
+| Company unknown | **Public firmographics + technographics** + account tier |
+| Static lead dump | **PageRank graph · OLS forecast · contagion · moat** |
 | Paid APIs & credit burns | **Free · self-hosted · public data** (LLM optional) |
 
 If your offer has demand, Panoptes surfaces it, scores it, solves it, and learns what converts.
@@ -65,11 +69,13 @@ You paste:   "I book sales appointments for dental marketing agencies"
 Panoptes finds: unanswered posts like
              "anyone know a good setter for dental clinics?"
              → 0 replies · silence 92 · hire intent · decision stage · reply odds 78
+             → firm: dental / micro · stack: HubSpot + GA · tier B · offer-fit 83
 
 You get:     public email/phone when scrapeable
              + a 4-step solution with a copy-paste checklist
              + A/B variants ranked by expected-value score
-             + a demand verdict, cluster map, and 14-day forecast
+             + account brief (displace HubSpot / fill the gap)
+             + demand verdict, cluster map, moat hours, 14-day forecast
 ```
 
 **That’s product-market signal you can act on tonight.**
@@ -171,6 +177,13 @@ scored, defenses attached. Survive score before you scale outreach.
 "What if I sold X instead?" — re-ranks the existing corpus under an alternate
 offer without re-scraping. Unlocks / loses ask lists + fit deltas.
 
+#### Firmographics + Technographics
+Public company signals inferred from site copy, ask text, and HTML fingerprints
+(CMS, CRM, analytics, ads, payments, hosting). Account intelligence tiers each
+lead (A/B/C), scores offer-fit, and names the stack wedge: displace, fill-gap,
+or complement. Site enrichment attaches `firmographics` / `technographics` onto
+leads when a website is scraped.
+
 Hit **Run full AI cockpit** in the UI to fire every layer in one pass.
 Use **Simulate alternate** for counterfactual demand.
 
@@ -205,6 +218,9 @@ Use **Simulate alternate** for counterfactual demand.
 | Integrity | Fuzzy quote→ask verification | No hallucinated "evidence" |
 | Stress | Adversarial persona attacks | Survive score before scale |
 | Counterfactual | BM25 re-rank under alt offer | Pivot without re-scraping |
+| Firmographics | Industry / size / geo / revenue rules | Public company shape without a data vendor |
+| Technographics | HTML + copy stack fingerprints | CMS, CRM, ads, analytics, payments |
+| Account intel | Tier × offer-fit × stack wedge | Who to call, and how to position |
 
 No GPU. No vector DB. No SaaS lock-in. Pure Python, runs on a laptop.
 
@@ -392,6 +408,10 @@ python find_leads.py "dental marketing agencies" --complete-only
 | `POST /api/ai/stress` | Adversarial offer stress test |
 | `POST /api/ai/counterfactual` | Alternate-offer demand simulation |
 | `GET /api/ai/integrity` | Evidence integrity check |
+| `GET /api/ai/accounts` | Firmographic + technographic account intel |
+| `GET /api/ai/firmographics` | Industry / size / geo landscape |
+| `GET /api/ai/technographics` | Detected stack landscape |
+| `POST /api/ai/account-brief` | Per-ask account brief (generative when keyed) |
 | `GET /api/ai/clusters` | TF-IDF clusters |
 
 ```env
@@ -461,6 +481,7 @@ app/ai/         AI engine
                   synthesis · pipeline · engine
                   moat · vacuum · saturation · contagion
                   dialect · icp · integrity · stress · counterfactual
+                  firmographics · technographics · account
 app/demand/     Demand Radar (offers, silence, deepen, drafts, store)
 app/discovery/  Reddit / web / contacts / extract
 app/scrapers/   Platform profile scrapers
@@ -486,15 +507,24 @@ If you sell something useful and people are asking for it in public — Panoptes
 
 ---
 
+## Author
+
+Built and maintained by **[@adarsh_aryamaan](https://github.com/adarsh_aryamaan)**.
+
+Panoptes is a self-hosted demand intelligence engine — unanswered public asks in, ranked solutions and account intel out.
+
+---
+
 ## License
 
-Proprietary. Copyright © 2026 Panoptes. All Rights Reserved.  
+Proprietary. Copyright © 2026 Panoptes / [@adarsh_aryamaan](https://github.com/adarsh_aryamaan). All Rights Reserved.  
 See [LICENSE](LICENSE).
 
 ---
 
 <p align="center">
   <strong>PANOPTES</strong> · <em>all-seeing demand intelligence</em><br/>
+  Developed by <a href="https://github.com/adarsh_aryamaan"><strong>@adarsh_aryamaan</strong></a><br/>
   <em>Real demand leaves a trail. Follow it. Solve it. Learn.</em><br/><br/>
   <code>git clone https://github.com/ragtagequation/Panoptes.git</code><br/>
   <code>python run.py</code> → <a href="http://127.0.0.1:8000">http://127.0.0.1:8000</a>
