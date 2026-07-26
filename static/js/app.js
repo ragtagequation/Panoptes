@@ -196,6 +196,12 @@ function renderRadar(job) {
         ${(lead.deepened_platforms || []).length ? `<span class="ask-contact">deepened: ${escapeHtml((lead.deepened_platforms || []).join(", "))}</span>` : ""}
       </div>
       ${drafts.map(([label, text]) => draftBlock(label, text)).join("")}
+      <div class="solve-row">
+        <button type="button" class="btn ghost solve-btn">Solve this</button>
+        <button type="button" class="btn ghost variants-btn">A/B variants</button>
+      </div>
+      <div class="solve-mount" hidden></div>
+      <div class="variants-mount" hidden></div>
       <div class="outcome-row">
         <select class="outcome-select" data-ask="${escapeHtml(lead.ask_id || "")}">
           <option value="">Outcome…</option>
@@ -218,6 +224,26 @@ function renderRadar(job) {
         } catch { /* ignore */ }
       });
     });
+    const solveBtn = card.querySelector(".solve-btn");
+    const solveMount = card.querySelector(".solve-mount");
+    if (solveBtn && solveMount) {
+      if (lead.ask_id) {
+        solveBtn.addEventListener("click", () =>
+          solveSingleAsk(lead.ask_id, solveMount, solveBtn)
+        );
+      } else {
+        solveBtn.disabled = true;
+        solveBtn.title = "This ask has no stored id to solve against";
+      }
+    }
+    const varBtn = card.querySelector(".variants-btn");
+    const varMount = card.querySelector(".variants-mount");
+    if (varBtn && varMount && lead.ask_id) {
+      varBtn.addEventListener("click", () =>
+        loadVariants(lead.ask_id, varMount, varBtn)
+      );
+    }
+
     cards.appendChild(card);
   }
 
@@ -393,6 +419,573 @@ async function loadWatches() {
   }
 }
 
+/* ── Masonry layout ─────────────────────────────────── */
+
+let masonryPanels = null;
+let masonryCols = 0;
+let masonryTimer = null;
+
+function masonryColumnCount(width) {
+  if (width >= 1500) return 3;
+  if (width >= 900) return 2;
+  return 1;
+}
+
+/**
+ * Place each panel in whichever column is currently shortest. CSS multi-column
+ * balances by height and leaves a void under the short column, so we pack
+ * manually. Panels keep their listeners because the nodes are moved, not cloned.
+ */
+function layoutMasonry() {
+  const host = $(".panel-columns");
+  if (!host) return;
+  if (!masonryPanels) {
+    masonryPanels = Array.from(host.children).filter((el) =>
+      el.classList.contains("panel")
+    );
+  }
+  masonryCols = masonryColumnCount(host.clientWidth);
+
+  const cols = masonryCols;
+  const columns = [];
+  host.textContent = "";
+  for (let i = 0; i < cols; i += 1) {
+    const col = document.createElement("div");
+    col.className = "mcol";
+    host.appendChild(col);
+    columns.push(col);
+  }
+  for (const panel of masonryPanels) {
+    let shortest = columns[0];
+    for (const col of columns) {
+      if (col.offsetHeight < shortest.offsetHeight) shortest = col;
+    }
+    shortest.appendChild(panel);
+  }
+}
+
+function scheduleMasonry() {
+  clearTimeout(masonryTimer);
+  masonryTimer = setTimeout(layoutMasonry, 120);
+}
+
+/* ── AI engine ──────────────────────────────────────── */
+
+let aiMode = "heuristic";
+
+async function loadAiStatus() {
+  try {
+    const s = await api("/api/ai/status");
+    aiMode = s.mode || "heuristic";
+    const pill = $("#ai-mode-pill");
+    if (pill) {
+      pill.textContent = s.generative ? `${aiMode} · generative` : "free heuristic mode";
+      pill.classList.toggle("generative", !!s.generative);
+    }
+  } catch {
+    /* non-fatal */
+  }
+}
+
+function offerContext() {
+  return {
+    offer: ($("#radar-offer").value || "").trim(),
+    niche: ($("#radar-niche").value || "").trim(),
+  };
+}
+
+function chip(text, cls = "stat-chip") {
+  const el = document.createElement("span");
+  el.className = cls;
+  el.innerHTML = text;
+  return el;
+}
+
+function renderBrief(b) {
+  $("#ai-brief").hidden = false;
+  const score = Number(b.demand_score || 0);
+  $("#ai-score").textContent = score;
+  $("#ai-score-ring").style.setProperty("--pct", String(score));
+  $("#ai-verdict").textContent = b.verdict || "—";
+  $("#ai-reasoning").textContent = b.reasoning || "";
+
+  const st = b.stats || {};
+  const chips = $("#ai-stat-chips");
+  chips.innerHTML = "";
+  [
+    [`<b>${st.total ?? 0}</b> asks analysed`],
+    [`<b>${st.zero_reply ?? 0}</b> zero-reply`],
+    [`<b>${st.fresh_7d ?? 0}</b> from last 7d`],
+    [`<b>${st.contactable ?? 0}</b> reachable`],
+    [`avg silence <b>${st.avg_silence ?? 0}</b>`],
+  ].forEach(([html]) => chips.appendChild(chip(html)));
+
+  const cl = $("#ai-clusters");
+  cl.innerHTML = "";
+  for (const c of b.clusters || []) {
+    const row = document.createElement("div");
+    row.className = "cluster-row";
+    const ex = (c.examples || [])[0];
+    row.innerHTML = `
+      <div class="cluster-head">
+        <span class="cluster-theme">${escapeHtml(c.theme || "")}</span>
+        <span class="cluster-meta">${c.count} asks · ${c.share}% · silence ${c.avg_silence}</span>
+      </div>
+      <div class="cluster-bar"><i style="width:${Math.max(3, Number(c.share) || 0)}%"></i></div>
+      ${ex && ex.quote ? `<p class="cluster-example">“${escapeHtml(ex.quote)}”</p>` : ""}
+    `;
+    cl.appendChild(row);
+  }
+  if (!(b.clusters || []).length) {
+    cl.innerHTML = `<p class="empty">No clusters yet — run a Demand Radar scan first.</p>`;
+  }
+
+  const voc = $("#ai-voc");
+  voc.innerHTML = "";
+  for (const v of b.voice_of_customer || []) voc.appendChild(chip(escapeHtml(v), "voc-chip"));
+  if (!(b.voice_of_customer || []).length) {
+    voc.innerHTML = `<span class="empty">No quotes captured yet.</span>`;
+  }
+
+  const pains = $("#ai-pains");
+  pains.innerHTML = "";
+  for (const p of b.top_pains || []) {
+    const li = document.createElement("li");
+    li.innerHTML =
+      `${p.frequency ? `<span class="pain-freq">${p.frequency}x</span>` : ""}` +
+      `<strong>${escapeHtml(p.pain || "")}</strong>` +
+      `${p.evidence ? `<em>“${escapeHtml(p.evidence)}”</em>` : ""}`;
+    pains.appendChild(li);
+  }
+
+  const acts = $("#ai-actions-list");
+  acts.innerHTML = "";
+  for (const a of b.next_actions || []) {
+    const li = document.createElement("li");
+    li.appendChild(document.createTextNode(a));
+    acts.appendChild(li);
+  }
+
+  const risk = $("#ai-risk");
+  if (b.riskiest_assumption) {
+    risk.hidden = false;
+    risk.textContent = `Riskiest assumption: ${b.riskiest_assumption}`;
+  } else {
+    risk.hidden = true;
+  }
+}
+
+async function runCockpit() {
+  const status = $("#ai-status");
+  const btn = $("#ai-cockpit-btn");
+  try {
+    btn.disabled = true;
+    setStatus(status, "Running full intelligence suite (match · graph · personas · forecast · memory)…");
+    const data = await api("/api/ai/cockpit", {
+      method: "POST",
+      body: JSON.stringify({ ...offerContext(), limit: 150 }),
+    });
+    renderCockpit(data);
+    // Also hydrate the classic brief block from cockpit.brief
+    if (data.brief) {
+      renderBrief({
+        ...data.brief,
+        stats: data.stats,
+        clusters: data.clusters,
+        source: data.source,
+        demand_score: data.brief.demand_score ?? data.stats?.demand_score,
+      });
+    }
+    setStatus(status, `Cockpit ready (${data.source} · ${(data.capabilities || []).length} capabilities).`);
+    scheduleMasonry();
+  } catch (err) {
+    setStatus(status, err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderCockpit(data) {
+  $("#ai-cockpit").hidden = false;
+
+  const strip = $("#ai-algo-strip");
+  strip.innerHTML = "";
+  for (const a of data.capabilities || []) {
+    const el = document.createElement("span");
+    el.className = "algo-chip";
+    el.textContent = a.replace(/_/g, " ");
+    strip.appendChild(el);
+  }
+
+  const score = Number(data.stats?.demand_score || data.brief?.demand_score || 0);
+  $("#ai-cockpit-score").textContent = score;
+  $("#ai-cockpit-score-ring").style.setProperty("--pct", String(score));
+  $("#ai-cockpit-verdict").textContent = data.brief?.verdict || "—";
+  $("#ai-cockpit-reasoning").textContent = data.brief?.reasoning || "";
+
+  const chips = $("#ai-cockpit-chips");
+  chips.innerHTML = "";
+  const st = data.stats || {};
+  const m = data.match || {};
+  [
+    [`<b>${st.total ?? 0}</b> asks`],
+    [`top fit <b>${m.top_fit ?? 0}</b>`],
+    [`<b>${m.decision_ready ?? 0}</b> decision-stage`],
+    [`<b>${m.hire_intent ?? 0}</b> hire intent`],
+    [`trend <b>${data.forecast?.trend || "—"}</b>`],
+  ].forEach(([html]) => chips.appendChild(chip(html)));
+
+  // Ranked matches
+  const ranked = $("#ai-ranked");
+  ranked.innerHTML = "";
+  const ms = $("#ai-match-summary");
+  ms.innerHTML = "";
+  if (!(data.ranked || []).length) {
+    ms.innerHTML = `<span class="empty">Enter an offer above, then re-run — BM25 needs something to match against.</span>`;
+  } else {
+    ms.appendChild(chip(`avg fit <b>${m.avg_fit ?? 0}</b>`));
+    ms.appendChild(chip(`contactable in top 10: <b>${m.contactable_top ?? 0}</b>`));
+    for (const r of (data.ranked || []).slice(0, 8)) {
+      const row = document.createElement("div");
+      row.className = "ranked-row";
+      row.innerHTML =
+        `<span class="fit-pill">${r.fit_score}% fit</span>` +
+        `<span class="intent-pill">${escapeHtml(r.intent || "")}</span>` +
+        `<span class="stage-pill">${escapeHtml(r.buying_stage || "")}</span>` +
+        `<span class="odds-pill">${r.reply_odds}% reply odds</span>` +
+        `<div style="margin-top:0.35rem"><strong>${escapeHtml(r.username || "")}</strong> — “${escapeHtml(r.quote || "")}”</div>`;
+      ranked.appendChild(row);
+    }
+  }
+
+  // Intel
+  const il = $("#ai-intel-list");
+  il.innerHTML = "";
+  for (const p of (data.intel || []).slice(0, 8)) {
+    const row = document.createElement("div");
+    row.className = "intel-row";
+    row.innerHTML =
+      `<span class="fit-pill">prio ${p.priority_score}</span>` +
+      `<span class="intent-pill">${escapeHtml(p.intent)}</span>` +
+      `<span class="stage-pill">${escapeHtml(p.buying_stage)}</span>` +
+      `<span class="odds-pill">${p.urgency_label} urgency · ${p.reply_odds}% odds</span>` +
+      `<div style="margin-top:0.3rem">“${escapeHtml(p.quote || "")}”</div>`;
+    il.appendChild(row);
+  }
+  if (!(data.intel || []).length) {
+    il.innerHTML = `<p class="empty">No asks to score yet.</p>`;
+  }
+
+  // Graph
+  $("#ai-graph-insight").textContent = data.graph?.insight || "";
+  const hubs = $("#ai-graph-hubs");
+  hubs.innerHTML = "";
+  for (const h of data.graph?.hubs || []) hubs.appendChild(chip(escapeHtml(h), "voc-chip"));
+  for (const b of data.graph?.bridges || []) {
+    const el = chip(escapeHtml(`bridge: ${b}`), "voc-chip");
+    hubs.appendChild(el);
+  }
+
+  // Personas
+  const pl = $("#ai-personas");
+  pl.innerHTML = "";
+  for (const p of data.personas || []) {
+    const row = document.createElement("div");
+    row.className = "persona-row";
+    row.innerHTML =
+      `<strong>${escapeHtml(p.name)}</strong> ` +
+      `<span class="muted">${p.count} asks · ${p.share}% · urgency ${p.avg_urgency}</span>` +
+      `<div style="margin-top:0.3rem">${escapeHtml(p.how_to_win || "")}</div>` +
+      (p.example ? `<em style="display:block;margin-top:0.25rem;color:var(--muted)">“${escapeHtml(p.example)}”</em>` : "");
+    pl.appendChild(row);
+  }
+
+  // Objections
+  const ol = $("#ai-objections");
+  ol.innerHTML = "";
+  for (const o of data.objections || []) {
+    const li = document.createElement("li");
+    li.innerHTML =
+      `<span class="pain-freq">${o.share}%</span>` +
+      `<strong>${escapeHtml(o.objection)}</strong> (${o.count}x)` +
+      `<em>${escapeHtml(o.counter || "")}</em>`;
+    ol.appendChild(li);
+  }
+  if (!(data.objections || []).length) {
+    ol.innerHTML = `<li class="empty">No recurring objections detected yet.</li>`;
+  }
+
+  // Forecast
+  const fc = data.forecast || {};
+  const fHost = $("#ai-forecast");
+  fHost.innerHTML = "";
+  const trend = document.createElement("div");
+  trend.className = "trend";
+  trend.textContent = (fc.trend || "unknown").replace(/_/g, " ");
+  fHost.appendChild(trend);
+  const fHint = document.createElement("p");
+  fHint.className = "hint";
+  fHint.textContent = fc.insight || "";
+  fHost.appendChild(fHint);
+  const fMetrics = document.createElement("div");
+  fMetrics.className = "forecast-metrics";
+  [
+    [`7d <b>${fc.projected_7d ?? 0}</b>`],
+    [`14d <b>${fc.projected_14d ?? 0}</b>`],
+    [`30d <b>${fc.projected_30d ?? 0}</b>`],
+    [`slope <b>${fc.slope_per_day ?? 0}</b>/day`],
+    [`conf <b>${fc.confidence ?? 0}</b>%`],
+  ].forEach(([html]) => fMetrics.appendChild(chip(html)));
+  fHost.appendChild(fMetrics);
+
+  // Memory
+  const mem = data.memory || {};
+  const mHost = $("#ai-memory");
+  mHost.innerHTML = "";
+  const mHint = document.createElement("p");
+  mHint.className = "hint";
+  mHint.textContent = mem.tagged
+    ? `Tagged ${mem.tagged} · wins ${mem.wins} · losses ${mem.losses} · win rate ${mem.win_rate}%`
+    : "No tagged outcomes yet — mark asks as booked / replied / ignored to train the outcome RAG loop.";
+  mHost.appendChild(mHint);
+  if (mem.top_win_words?.length) {
+    const wrap = document.createElement("div");
+    wrap.className = "voc-chips";
+    wrap.style.marginTop = "0.4rem";
+    for (const w of mem.top_win_words) wrap.appendChild(chip(escapeHtml(w), "voc-chip"));
+    mHost.appendChild(wrap);
+  }
+}
+
+async function runBrief() {
+  const status = $("#ai-status");
+  const btn = $("#ai-brief-btn");
+  try {
+    btn.disabled = true;
+    setStatus(status, "Synthesising demand verdict…");
+    const b = await api("/api/ai/brief", {
+      method: "POST",
+      body: JSON.stringify({ ...offerContext(), limit: 150 }),
+    });
+    renderBrief(b);
+    setStatus(status, `Verdict ready (${b.source} mode).`);
+  } catch (err) {
+    setStatus(status, err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderOfferDoctor(d) {
+  $("#ai-offer").hidden = false;
+  const score = Number(d.score || 0);
+  $("#ai-offer-score").textContent = score;
+  $("#ai-offer-bar").style.width = `${score}%`;
+
+  const probs = $("#ai-offer-problems");
+  probs.innerHTML = "";
+  for (const p of d.problems || []) {
+    const li = document.createElement("li");
+    li.textContent = p;
+    probs.appendChild(li);
+  }
+
+  const wrap = $("#ai-offer-rewrite-wrap");
+  if (d.rewrite) {
+    wrap.hidden = false;
+    $("#ai-offer-rewrite").textContent = d.headline ? `${d.headline} — ${d.rewrite}` : d.rewrite;
+  } else {
+    wrap.hidden = true;
+  }
+
+  const use = $("#ai-words-use");
+  use.innerHTML = "";
+  for (const w of d.words_to_use || []) use.appendChild(chip(escapeHtml(w), "voc-chip"));
+
+  const drop = $("#ai-words-drop");
+  drop.innerHTML = "";
+  for (const w of d.jargon_to_drop || []) drop.appendChild(chip(escapeHtml(w), "voc-chip"));
+}
+
+async function runOfferDoctor() {
+  const status = $("#ai-status");
+  const btn = $("#ai-offer-btn");
+  const offer = ($("#radar-offer").value || "").trim();
+  if (offer.length < 3) {
+    setStatus(status, "Enter your offer in the Demand Radar box first.", true);
+    return;
+  }
+  try {
+    btn.disabled = true;
+    setStatus(status, "Diagnosing offer against buyer language…");
+    const d = await api("/api/ai/offer-doctor", {
+      method: "POST",
+      body: JSON.stringify({ offer, limit: 150 }),
+    });
+    if (d.error) throw new Error(d.error);
+    renderOfferDoctor(d);
+    setStatus(status, `Offer diagnosed (${d.source} mode).`);
+  } catch (err) {
+    setStatus(status, err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function solutionCard(entry) {
+  const s = entry.solution || entry;
+  const intel = s.intel || {};
+  const card = document.createElement("article");
+  card.className = "solution-card";
+  const steps = (s.steps || [])
+    .map((st) => `<li><span><b>${escapeHtml(st.do || "")}</b> ${escapeHtml(st.how || "")}</span></li>`)
+    .join("");
+  const intelPills = intel.intent
+    ? `<span class="intent-pill">${escapeHtml(intel.intent)}</span>` +
+      `<span class="stage-pill">${escapeHtml(intel.buying_stage || "")}</span>` +
+      `<span class="odds-pill">${intel.reply_odds ?? "—"}% odds</span>`
+    : "";
+  card.innerHTML = `
+    <div class="sol-head">
+      <span class="sol-conf">${Number(s.confidence || 0)}% confident</span>
+      ${entry.username ? `<span>u/${escapeHtml(entry.username)}</span>` : ""}
+      ${s.difficulty ? `<span>${escapeHtml(s.difficulty)}</span>` : ""}
+      ${s.time_estimate ? `<span>${escapeHtml(s.time_estimate)}</span>` : ""}
+      <span>${escapeHtml(s.source || "")}</span>
+      ${intelPills}
+    </div>
+    ${s.diagnosis ? `<p class="sol-diag">${escapeHtml(s.diagnosis)}</p>` : ""}
+    ${steps ? `<ol class="sol-steps">${steps}</ol>` : ""}
+  `;
+  if (s.deliverable) {
+    const d = document.createElement("details");
+    d.className = "draft";
+    d.innerHTML = `<summary>Deliverable they can use</summary><pre></pre><button type="button" class="btn ghost copy-btn">Copy</button>`;
+    d.querySelector("pre").textContent = s.deliverable;
+    d.querySelector(".copy-btn").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(s.deliverable);
+        d.querySelector(".copy-btn").textContent = "Copied";
+        setTimeout(() => { d.querySelector(".copy-btn").textContent = "Copy"; }, 1200);
+      } catch { /* ignore */ }
+    });
+    card.appendChild(d);
+  }
+  if (s.helpful_note) {
+    const d = document.createElement("details");
+    d.className = "draft";
+    d.innerHTML = `<summary>Help-first note to send</summary><pre></pre><button type="button" class="btn ghost copy-btn">Copy</button>`;
+    d.querySelector("pre").textContent = s.helpful_note;
+    d.querySelector(".copy-btn").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(s.helpful_note);
+        d.querySelector(".copy-btn").textContent = "Copied";
+        setTimeout(() => { d.querySelector(".copy-btn").textContent = "Copy"; }, 1200);
+      } catch { /* ignore */ }
+    });
+    card.appendChild(d);
+  }
+  if (s.error) {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = s.error;
+    card.appendChild(p);
+  }
+  return card;
+}
+
+async function runSolveBatch() {
+  const status = $("#ai-status");
+  const btn = $("#ai-solve-btn");
+  try {
+    btn.disabled = true;
+    setStatus(status, "Solving the loudest silent asks…");
+    const res = await api("/api/ai/solve-batch", {
+      method: "POST",
+      body: JSON.stringify({ ...offerContext(), limit: 5, only_zero_reply: true }),
+    });
+    const host = $("#ai-solution-list");
+    host.innerHTML = "";
+    for (const entry of res.solutions || []) host.appendChild(solutionCard(entry));
+    if (!(res.solutions || []).length) {
+      host.innerHTML = `<p class="empty">No stored asks yet — run a Demand Radar scan first.</p>`;
+    }
+    $("#ai-solutions").hidden = false;
+    setStatus(status, `Solved ${res.count} ask${res.count === 1 ? "" : "s"}.`);
+  } catch (err) {
+    setStatus(status, err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function solveSingleAsk(askId, mount, button) {
+  try {
+    button.disabled = true;
+    button.textContent = "Solving…";
+    const res = await api("/api/ai/solve", {
+      method: "POST",
+      body: JSON.stringify({ ask_id: askId, ...offerContext() }),
+    });
+    mount.innerHTML = "";
+    mount.appendChild(solutionCard(res));
+    mount.hidden = false;
+    button.textContent = "Re-solve";
+  } catch (err) {
+    mount.hidden = false;
+    mount.innerHTML = `<p class="empty">${escapeHtml(err.message)}</p>`;
+    button.textContent = "Solve this";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function loadVariants(askId, mount, button) {
+  try {
+    button.disabled = true;
+    button.textContent = "Scoring…";
+    const res = await api("/api/ai/variants", {
+      method: "POST",
+      body: JSON.stringify({ ask_id: askId, n: 4, ...offerContext() }),
+    });
+    mount.innerHTML = "";
+    const list = document.createElement("div");
+    list.className = "variant-list";
+    for (const v of res.variants || []) {
+      const card = document.createElement("div");
+      card.className = "variant-card";
+      card.innerHTML =
+        `<div class="sol-head">` +
+        `<span class="ev">EV ${v.ev_score}</span>` +
+        `<span>${escapeHtml(v.angle || "")}</span>` +
+        `<span>${escapeHtml(v.channel || "")}</span>` +
+        `</div>` +
+        (v.subject ? `<strong>${escapeHtml(v.subject)}</strong>` : "") +
+        `<pre style="white-space:pre-wrap;margin:0.4rem 0 0;font-family:inherit;font-size:0.88rem"></pre>` +
+        `<p class="muted" style="margin:0.35rem 0 0">${escapeHtml(v.why_it_works || "")}</p>` +
+        `<button type="button" class="btn ghost copy-btn" style="margin-top:0.4rem">Copy</button>`;
+      card.querySelector("pre").textContent = v.body || "";
+      card.querySelector(".copy-btn").addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(v.body || "");
+          card.querySelector(".copy-btn").textContent = "Copied";
+          setTimeout(() => { card.querySelector(".copy-btn").textContent = "Copy"; }, 1200);
+        } catch { /* ignore */ }
+      });
+      list.appendChild(card);
+    }
+    mount.appendChild(list);
+    mount.hidden = false;
+    button.textContent = "Re-score variants";
+  } catch (err) {
+    mount.hidden = false;
+    mount.innerHTML = `<p class="empty">${escapeHtml(err.message)}</p>`;
+    button.textContent = "A/B variants";
+  } finally {
+    button.disabled = false;
+  }
+}
+
 /* ── Discover ───────────────────────────────────────── */
 
 async function refreshDiscoverEstimate() {
@@ -493,7 +1086,7 @@ function renderProviderPills(providers = {}) {
     anthropic: "Claude",
     linkedin: "LinkedIn",
   };
-  host.innerHTML = Object;
+  host.innerHTML = "";
   for (const [key, label] of Object.entries(labels)) {
     const on = !!providers[key];
     const span = document.createElement("span");
@@ -855,6 +1448,10 @@ $("#start-btn").addEventListener("click", startScrape);
 $("#discover-btn").addEventListener("click", startDiscover);
 $("#save-settings").addEventListener("click", saveSettings);
 $("#test-proxy").addEventListener("click", testProxy);
+$("#ai-cockpit-btn").addEventListener("click", runCockpit);
+$("#ai-brief-btn").addEventListener("click", runBrief);
+$("#ai-solve-btn").addEventListener("click", runSolveBatch);
+$("#ai-offer-btn").addEventListener("click", runOfferDoctor);
 
 (async function init() {
   try {
@@ -865,9 +1462,20 @@ $("#test-proxy").addEventListener("click", testProxy);
       refreshDiscoverEstimate(),
       refreshRadarEstimate(),
       loadWatches(),
+      loadAiStatus(),
     ]);
+    scheduleMasonry();
   } catch (err) {
     console.error(err);
     setStatus($("#radar-status"), `Failed to load: ${err.message}`, true);
+  }
+
+  // Panel heights change as exports load, jobs stream and watches render —
+  // re-pack whenever any of them resizes.
+  window.addEventListener("resize", scheduleMasonry);
+  const host = $(".panel-columns");
+  if (host && "ResizeObserver" in window) {
+    const ro = new ResizeObserver(scheduleMasonry);
+    for (const panel of Array.from(host.querySelectorAll(".panel"))) ro.observe(panel);
   }
 })();
