@@ -1,0 +1,9 @@
+# Proxy file for Panoptes
+# One proxy per line: http://username:password@host:port
+# Lines starting with # are ignored
+
+# Example with auth:
+# http://user:pass@proxy.example.com:8080
+
+# Example without auth:
+# http://proxy.example.com:8080

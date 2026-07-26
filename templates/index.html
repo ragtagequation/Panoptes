@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panoptes — See if you have real demand</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/app.css" />
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="glow" aria-hidden="true"></div>
+
+  <header class="top">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <h1 class="brand-name">Panoptes</h1>
+    </div>
+    <p class="tagline">See if your product has <em>actual</em> demand — find people who asked and got silence.</p>
+    <div class="meta" id="meta">
+      <span id="version">…</span>
+      <span class="dot">·</span>
+      <span id="proxy-pill">proxy off</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel radar-panel hero-panel">
+      <div class="mode-tabs" role="tablist">
+        <button type="button" class="mode-tab active" data-mode="radar" id="tab-radar">Demand Radar</button>
+        <button type="button" class="mode-tab" data-mode="discover" id="tab-discover">Business contacts</button>
+      </div>
+
+      <div id="mode-radar">
+        <h2>Does this have real demand?</h2>
+        <p class="hint">Paste what you sell. Panoptes hunts public asks with <strong>0–2 replies</strong>, scores silence, scrapes free public contacts, deepens socials, and drafts a first-responder reply that answers <em>their</em> exact question.</p>
+
+        <label class="field">
+          <span>Your offer</span>
+          <textarea id="radar-offer" rows="2" placeholder="I book sales appointments for dental marketing agencies"></textarea>
+        </label>
+        <div class="row">
+          <label class="field half">
+            <span>Niche <em>(optional)</em></span>
+            <input type="text" id="radar-niche" placeholder="dental marketing agencies" />
+          </label>
+          <label class="field half">
+            <span>Company <em>(optional)</em></span>
+            <input type="text" id="radar-company" placeholder="Acme Setters" />
+          </label>
+        </div>
+
+        <div class="source-row">
+          <label class="check"><input type="checkbox" id="radar-web" checked /><span>Include web demand</span></label>
+          <label class="check"><input type="checkbox" id="radar-sites" checked /><span>Scrape public contacts</span></label>
+          <label class="check"><input type="checkbox" id="radar-deepen" checked /><span>Deepen IG / LinkedIn / socials (free)</span></label>
+          <label class="check"><input type="checkbox" id="radar-require-contact" /><span>Contactable only</span></label>
+          <label class="check"><input type="checkbox" id="radar-only-new" /><span>New asks only</span></label>
+        </div>
+
+        <div class="lead-target-row">
+          <label class="field lead-target-field">
+            <span>How many asks</span>
+            <select id="radar-target">
+              <option value="10">10 asks</option>
+              <option value="25" selected>25 asks</option>
+              <option value="50">50 asks</option>
+              <option value="75">75 asks</option>
+            </select>
+          </label>
+          <label class="field lead-target-field">
+            <span>Max replies</span>
+            <select id="radar-max-comments">
+              <option value="0">0 only</option>
+              <option value="1">≤1</option>
+              <option value="2" selected>≤2</option>
+              <option value="5">≤5</option>
+            </select>
+          </label>
+          <div class="estimate-box">
+            <div class="estimate-label">Est. time</div>
+            <div class="estimate-value" id="radar-estimate">~1–3 min</div>
+          </div>
+          <div class="timer-box" id="radar-timer-box" hidden>
+            <div class="estimate-label">Elapsed</div>
+            <div class="timer-value" id="radar-timer">00:00</div>
+          </div>
+        </div>
+
+        <div class="row actions">
+          <button type="button" class="btn primary" id="radar-btn">Scan unanswered demand</button>
+          <button type="button" class="btn ghost" id="radar-watch-btn">Save watch (6h)</button>
+        </div>
+        <p class="status" id="radar-status" hidden></p>
+
+        <div id="radar-results" hidden>
+          <div class="job-head" style="margin-top:1rem">
+            <strong id="radar-count">0 asks</strong>
+            <span class="badge" id="radar-badge">idle</span>
+          </div>
+          <p class="job-msg" id="radar-message"></p>
+          <p class="timer-line" id="radar-timer-line" hidden></p>
+          <div id="radar-cards" class="ask-cards"></div>
+          <div class="job-actions" id="radar-actions"></div>
+        </div>
+
+        <div class="watch-block" id="watch-block">
+          <h3 class="subhead">Active watches</h3>
+          <ul id="watch-list" class="watch-list"></ul>
+          <p class="empty" id="watch-empty">No watches yet. Save a watch to re-scan for new unanswered asks.</p>
+        </div>
+      </div>
+
+      <div id="mode-discover" hidden>
+        <h2>Find business contacts</h2>
+        <p class="hint">Search Google/Yahoo businesses + Reddit + GitHub. Enrichment is optional — turn it off for a fast lead list, or require email+phone when you need dial-ready rows.</p>
+
+        <label class="field">
+          <span>Topic / niche / audience</span>
+          <input type="text" id="topic" placeholder="real estate coaching agencies" />
+        </label>
+        <label class="field">
+          <span>Company / product <em>(optional)</em></span>
+          <input type="text" id="company" placeholder="Acme Booking" />
+        </label>
+        <div class="source-row">
+          <label class="check"><input type="checkbox" id="src-web" checked /><span>Google / web businesses</span></label>
+          <label class="check"><input type="checkbox" id="src-reddit" checked /><span>Reddit</span></label>
+          <label class="check"><input type="checkbox" id="src-github" /><span>GitHub</span></label>
+        </div>
+        <label class="check">
+          <input type="checkbox" id="enrich-contacts" checked />
+          <span>Enrich emails &amp; phones from public text</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="scrape-sites" checked />
+          <span>Scrape websites for contact pages</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="require-complete" />
+          <span>Only keep leads with <strong>both</strong> email + phone</span>
+        </label>
+
+        <div class="lead-target-row">          <label class="field lead-target-field">
+            <span>How many leads</span>
+            <select id="target-leads">
+              <option value="25">25 leads</option>
+              <option value="50" selected>50 leads</option>
+              <option value="100">100 leads</option>
+              <option value="150">150 leads</option>
+              <option value="200">200 leads</option>
+            </select>
+          </label>
+          <div class="estimate-box">
+            <div class="estimate-label">Est. time</div>
+            <div class="estimate-value" id="discover-estimate">~1–2 min</div>
+          </div>
+          <div class="timer-box" id="discover-timer-box" hidden>
+            <div class="estimate-label">Elapsed</div>
+            <div class="timer-value" id="discover-timer">00:00</div>
+          </div>
+        </div>
+
+        <button type="button" class="btn primary" id="discover-btn">Find leads</button>
+        <p class="status" id="discover-status" hidden></p>
+
+        <div id="discover-results" hidden>
+          <div class="job-head" style="margin-top:1rem">
+            <strong id="discover-count">0 leads</strong>
+            <span class="badge" id="discover-badge">idle</span>
+          </div>
+          <p class="job-msg" id="discover-message"></p>
+          <p class="timer-line" id="discover-timer-line" hidden></p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Handle</th>
+                  <th>Platform</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Website</th>
+                  <th>What they do</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody id="discover-rows"></tbody>
+            </table>
+          </div>
+          <div class="job-actions" id="discover-actions"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel scrape-panel">
+      <h2>Deep scrape</h2>
+      <p class="hint">Paste usernames to pull full profiles after Radar finds handles.</p>
+
+      <label class="field">
+        <span>Platform</span>
+        <select id="platform">
+          <option value="instagram">Instagram</option>
+          <option value="tiktok">TikTok</option>
+          <option value="linkedin">LinkedIn</option>
+          <option value="github">GitHub</option>
+          <option value="youtube">YouTube</option>
+          <option value="twitch">Twitch</option>
+          <option value="linktree">Linktree</option>
+          <option value="pinterest">Pinterest</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Usernames</span>
+        <textarea id="usernames" rows="6" placeholder="nasa&#10;natgeo"></textarea>
+      </label>
+
+      <label class="check">
+        <input type="checkbox" id="enrich" checked />
+        <span>Enrich with contact info</span>
+      </label>
+
+      <button type="button" class="btn primary" id="start-btn">Start scrape</button>
+      <p class="status" id="scrape-status" hidden></p>
+    </section>
+
+    <section class="panel job-panel">
+      <h2>Live scrape job</h2>
+      <div id="job-empty" class="empty">No active job yet.</div>
+      <div id="job-view" hidden>
+        <div class="job-head">
+          <strong id="job-platform">—</strong>
+          <span class="badge" id="job-status">queued</span>
+        </div>
+        <p class="job-msg" id="job-message">—</p>
+        <div class="bar"><div class="bar-fill" id="job-bar"></div></div>
+        <p class="job-count" id="job-count">0 / 0</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Handle</th>
+                <th>Email</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody id="job-rows"></tbody>
+          </table>
+        </div>
+
+        <div class="job-actions">
+          <a class="btn ghost" id="download-btn" hidden href="#">Download CSV</a>
+        </div>
+
+        <div id="job-errors" class="errors" hidden></div>
+      </div>
+    </section>
+
+    <section class="panel settings-panel">
+      <h2>Settings</h2>
+
+      <h3 class="subhead">API keys <em>(optional — unlock better scraping)</em></h3>
+      <p class="hint">Keys stay on your machine in <code>.env</code>. Leave blank to keep the free path. Paste a new value to replace; leave empty when saving to keep the current key.</p>
+
+      <div class="keys-grid">
+        <label class="field">
+          <span>Google Places</span>
+          <input type="password" id="google_places_api_key" placeholder="Business discovery" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Firecrawl</span>
+          <input type="password" id="firecrawl_api_key" placeholder="Site scrape upgrade" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Hunter.io</span>
+          <input type="password" id="hunter_api_key" placeholder="Email finder" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Apollo</span>
+          <input type="password" id="apollo_api_key" placeholder="People match" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>OpenAI (GPT)</span>
+          <input type="password" id="openai_api_key" placeholder="Smarter outreach drafts" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Anthropic (Claude)</span>
+          <input type="password" id="anthropic_api_key" placeholder="Smarter outreach drafts" autocomplete="off" />
+        </label>
+      </div>
+      <div class="provider-pills" id="provider-pills"></div>
+
+      <h3 class="subhead">Auth &amp; network</h3>
+      <label class="field">
+        <span>LinkedIn cookie <em>(li_at)</em></span>
+        <input type="password" id="linkedin_cookie" placeholder="Paste li_at cookie" autocomplete="off" />
+      </label>
+      <label class="field">
+        <span>Proxy URL</span>
+        <input type="text" id="proxy" placeholder="http://user:pass@host:port" />
+      </label>
+      <label class="field">
+        <span>Proxy file path</span>
+        <input type="text" id="proxy_file" placeholder="proxies.txt" />
+      </label>
+      <div class="row">
+        <label class="field half">
+          <span>Delay min (s)</span>
+          <input type="number" id="delay_min" step="0.1" min="0" />
+        </label>
+        <label class="field half">
+          <span>Delay max (s)</span>
+          <input type="number" id="delay_max" step="0.1" min="0" />
+        </label>
+      </div>
+      <label class="check">
+        <input type="checkbox" id="free_proxy" />
+        <span>Use free public proxies</span>
+      </label>
+      <div class="row actions">
+        <button type="button" class="btn primary" id="save-settings">Save settings</button>
+        <button type="button" class="btn ghost" id="test-proxy">Test proxy</button>
+      </div>
+      <p class="status" id="settings-status" hidden></p>
+    </section>
+
+    <section class="panel exports-panel">
+      <h2>Exports</h2>
+      <ul id="exports-list" class="exports"></ul>
+      <p class="empty" id="exports-empty">No CSV exports yet.</p>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>Panoptes Demand Radar</span>
+    <span class="dot">·</span>
+    <span>Proprietary license</span>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

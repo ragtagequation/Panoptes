@@ -1,0 +1,1 @@
+"""Panoptes web application package."""
