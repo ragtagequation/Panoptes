@@ -17,6 +17,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-0b1210?style=for-the-badge&logo=python&logoColor=35e6ff)](https://www.python.org/downloads/)
 [![Free · Self-hosted](https://img.shields.io/badge/free-self--hosted-35e6ff?style=for-the-badge)](#install-in-2-minutes)
 [![AI Engine](https://img.shields.io/badge/AI-30%2B%20capabilities-9a7bff?style=for-the-badge)](#the-ai-engine)
+[![MCP · Connectors](https://img.shields.io/badge/MCP-Claude%20%7C%20Cursor%20%7C%20Obsidian-35e6ff?style=for-the-badge)](#connect-claude-obsidian-and-your-stack)
 [![Public data only](https://img.shields.io/badge/data-public%20only-1f8f68?style=for-the-badge)](#what-panoptes-never-does)
 [![License: Proprietary](https://img.shields.io/badge/license-proprietary-e07a6a?style=for-the-badge)](LICENSE)
 
@@ -40,6 +41,7 @@ A human, on the public internet, stuck, waiting for someone useful.
 6. a **help-first solution** (diagnosis, steps, deliverable) — not just a pitch
 7. A/B outreach variants scored by expected value
 8. a demand graph, forecast, personas, first-responder moat, and outcome-trained memory
+9. **one-click push** into Claude MCP, Obsidian, Slack, Notion, Linear, Zapier, Make, HubSpot
 
 Then you reply. Book the call. Or learn — fast — that nobody is asking.
 
@@ -55,6 +57,7 @@ Then you reply. Book the call. Or learn — fast — that nobody is asking.
 | Guess your ICP | **Personas + ICP auto-discovery** from real wins |
 | Company unknown | **Public firmographics + technographics** + account tier |
 | Static lead dump | **PageRank graph · OLS forecast · contagion · moat** |
+| Copy-paste into 5 tools | **MCP + Obsidian + Slack/Notion/Linear/Zapier** connectors |
 | Paid APIs & credit burns | **Free · self-hosted · public data** (LLM optional) |
 
 If your offer has demand, Panoptes surfaces it, scores it, solves it, and learns what converts.
@@ -200,8 +203,90 @@ Use **Simulate alternate** for counterfactual demand.
 - **Business contacts mode** — niche → websites with email + phone
 - **Profile scrapers** — 8 platforms for deep profile pulls
 - **CSV + Instantly-ready export**
+- **Connectors** — Claude/Cursor MCP, Obsidian, Slack, Discord, Notion, Linear, Zapier, Make, HubSpot, generic webhook
 - **Local API** — wire into Next.js / your stack
 - **Neural pipeline UI** — black console, glass panels, canvas brain animation
+
+---
+
+## Connect Claude, Obsidian, and your stack
+
+Demand intelligence is useless if it dies in a dashboard. Panoptes ships a
+**Connectors** panel + MCP server so results land inside the tools you already open every day.
+
+| Host / tool | How it connects | What you get |
+|-------------|-----------------|--------------|
+| **Claude Desktop** | MCP stdio (`panoptes_mcp.py`) | Ask Claude to list asks, solve, run cockpit, push notes |
+| **Cursor** | MCP settings / `.cursor/mcp.json` | Same tools inside the IDE agent |
+| **Obsidian** | Local vault path | Markdown dossiers with YAML frontmatter |
+| **Slack / Discord** | Incoming webhooks | Channel alerts for demand hits + solutions |
+| **Notion** | Integration API | Database rows for asks / follow-ups |
+| **Linear** | GraphQL API | Issues from unanswered demand |
+| **Zapier / Make / HubSpot** | Catch-hook webhooks | Fan-out into CRMs and automations |
+| **n8n / custom** | Generic webhook | Raw JSON anywhere you want |
+
+### Claude Desktop / Cursor (MCP)
+
+```bash
+python panoptes_mcp.py
+```
+
+1. Open the web UI → **Connectors** → **Copy MCP config**
+   (or call `GET /api/connectors/mcp-config`)
+2. Paste into Claude Desktop `claude_desktop_config.json` **or** Cursor MCP settings
+3. Restart the host — ask: *“List my top unanswered asks in Panoptes”*
+
+Tools exposed to the model:
+
+| Tool | What it does |
+|------|----------------|
+| `panoptes_health` | Engine + stored-ask health check |
+| `panoptes_list_asks` | Stored unanswered demand |
+| `panoptes_get_ask` | Full ask payload by id |
+| `panoptes_solve` | Answer Engine on an ask / freeform text |
+| `panoptes_cockpit` | Full AI cockpit pass |
+| `panoptes_profiles` | Identity-resolved dossiers |
+| `panoptes_connectors` | Connector readiness + host configs |
+| `panoptes_push` | Send to Obsidian / Slack / Notion / … |
+
+Example configs: `connectors/claude_desktop.example.json`, `connectors/cursor.mcp.example.json`.
+
+### Obsidian
+
+Set `OBSIDIAN_VAULT_PATH` (UI **Connectors** panel or `.env`). Panoptes writes notes under:
+
+```
+Vault/Panoptes/Asks/       # ask + solution dossiers
+Vault/Panoptes/Briefs/     # demand verdicts
+Vault/Panoptes/Profiles/   # identity-resolved profiles
+```
+
+Use **Test Obsidian write** in the UI to verify the vault path in one click.
+
+### Ops tools (.env)
+
+| Tool | Env |
+|------|-----|
+| Slack | `SLACK_WEBHOOK_URL` |
+| Discord | `DISCORD_WEBHOOK_URL` |
+| Zapier | `ZAPIER_WEBHOOK_URL` |
+| Make | `MAKE_WEBHOOK_URL` |
+| HubSpot | `HUBSPOT_WEBHOOK_URL` |
+| Notion | `NOTION_API_KEY` + `NOTION_DATABASE_ID` |
+| Linear | `LINEAR_API_KEY` + `LINEAR_TEAM_ID` |
+| Any webhook | `PANOPTES_GENERIC_WEBHOOK_URL` |
+
+Push from the UI **Connectors** panel, from MCP (`panoptes_push`), or:
+
+```http
+POST /api/connectors/push
+{"connector":"slack","event":"demand_hit","ask_id":"..."}
+```
+
+```http
+POST /api/connectors/push
+{"connector":"obsidian","kind":"ask","ask_id":"...","offer":"your offer"}
+```
 
 ---
 
@@ -423,6 +508,9 @@ python find_leads.py "dental marketing agencies" --complete-only
 | `POST /api/ai/account-brief` | Per-ask account brief (generative when keyed) |
 | `GET /api/ai/profiles` | Cross-platform identity resolution + profile dossiers |
 | `POST /api/ai/profile-brief` | Grounded profile intelligence brief |
+| `GET /api/connectors` | Connector readiness + MCP host configs |
+| `GET /api/connectors/mcp-config` | Claude Desktop / Cursor MCP JSON |
+| `POST /api/connectors/push` | Push ask/brief/profile to Obsidian or ops tools |
 | `GET /api/ai/clusters` | TF-IDF clusters |
 
 ```env
@@ -493,6 +581,8 @@ app/ai/         AI engine
                   moat · vacuum · saturation · contagion
                   dialect · icp · integrity · stress · counterfactual
                   firmographics · technographics · account · profiles
+app/connectors/ Obsidian · Slack · Discord · Notion · Linear · Zapier/Make · webhooks
+app/mcp/        Claude / Cursor MCP stdio server
 app/demand/     Demand Radar (offers, silence, deepen, drafts, store)
 app/discovery/  Reddit / web / contacts / extract
 app/scrapers/   Platform profile scrapers
@@ -500,6 +590,8 @@ app/providers/  Optional Firecrawl / Places / Apollo / Hunter / LLM
 app/web/        FastAPI + jobs + UI routes
 templates/      Web UI
 static/         CSS / JS / neural FX
+connectors/     Example Claude Desktop + Cursor MCP configs
+panoptes_mcp.py MCP entrypoint for Claude / Cursor
 demand_radar.py CLI for demand scans
 find_leads.py   CLI for business contacts
 run.py          Launch the web app
@@ -522,7 +614,9 @@ If you sell something useful and people are asking for it in public — Panoptes
 
 Built and maintained by **[@adarsh_aryamaan](https://github.com/adarsh_aryamaan)**.
 
-Panoptes is a self-hosted demand intelligence engine — unanswered public asks in, ranked solutions and account intel out.
+Panoptes is a self-hosted demand intelligence engine — unanswered public asks in,
+ranked solutions and account intel out, with MCP + Obsidian + ops connectors so
+the signal reaches Claude, Cursor, and your stack.
 
 ---
 

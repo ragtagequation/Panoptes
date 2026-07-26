@@ -93,6 +93,17 @@ class SettingsUpdate(BaseModel):
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
     google_places_api_key: Optional[str] = None
+    notion_api_key: Optional[str] = None
+    notion_database_id: Optional[str] = None
+    linear_api_key: Optional[str] = None
+    linear_team_id: Optional[str] = None
+    obsidian_vault_path: Optional[str] = None
+    slack_webhook_url: Optional[str] = None
+    discord_webhook_url: Optional[str] = None
+    zapier_webhook_url: Optional[str] = None
+    make_webhook_url: Optional[str] = None
+    hubspot_webhook_url: Optional[str] = None
+    panoptes_generic_webhook_url: Optional[str] = None
     proxy: Optional[str] = None
     proxy_file: Optional[str] = None
     free_proxy: Optional[bool] = None
@@ -193,6 +204,15 @@ class StressRequest(BaseModel):
     limit: int = Field(default=150, ge=1, le=500)
 
 
+class ConnectorPushRequest(BaseModel):
+    connector: str = Field(min_length=2)
+    event: str = "manual_push"
+    offer: str = ""
+    ask_id: Optional[str] = None
+    kind: str = "ask"
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
 @app.get("/", response_class=HTMLResponse)
 def index() -> HTMLResponse:
     index_path = TEMPLATES_DIR / "index.html"
@@ -211,6 +231,7 @@ def health() -> dict[str, Any]:
         "features": [
             "demand_radar", "discover", "scrape", "watch",
             "ai_engine", "answer_engine", "demand_graph", "forecast", "outcome_rag",
+            "connectors", "mcp", "obsidian",
         ],
         "api_key_required": bool((env_get("PANOPTES_API_KEY") or "").strip()),
         "providers": provider_status(),
@@ -230,11 +251,22 @@ def get_settings() -> dict[str, Any]:
         "openai_api_key": env_get("OPENAI_API_KEY"),
         "anthropic_api_key": env_get("ANTHROPIC_API_KEY"),
         "google_places_api_key": env_get("GOOGLE_PLACES_API_KEY"),
+        "notion_api_key": env_get("NOTION_API_KEY"),
+        "linear_api_key": env_get("LINEAR_API_KEY"),
     }
     return {
         **{f"{k}_set": bool(v) for k, v in secrets.items()},
         **{f"{k}_preview": key_preview(v) for k, v in secrets.items()},
         "providers": provider_status(),
+        "obsidian_vault_path": env_get("OBSIDIAN_VAULT_PATH"),
+        "notion_database_id": env_get("NOTION_DATABASE_ID"),
+        "linear_team_id": env_get("LINEAR_TEAM_ID"),
+        "slack_webhook_url_set": bool(env_get("SLACK_WEBHOOK_URL")),
+        "discord_webhook_url_set": bool(env_get("DISCORD_WEBHOOK_URL")),
+        "zapier_webhook_url_set": bool(env_get("ZAPIER_WEBHOOK_URL")),
+        "make_webhook_url_set": bool(env_get("MAKE_WEBHOOK_URL")),
+        "hubspot_webhook_url_set": bool(env_get("HUBSPOT_WEBHOOK_URL")),
+        "panoptes_generic_webhook_url_set": bool(env_get("PANOPTES_GENERIC_WEBHOOK_URL")),
         "proxy": env_get("PANOPTES_PROXY"),
         "proxy_file": env_get("PANOPTES_PROXY_FILE"),
         "free_proxy": env_get("PANOPTES_FREE_PROXY", default="false").lower()
@@ -257,6 +289,17 @@ def put_settings(body: SettingsUpdate) -> dict[str, Any]:
         "openai_api_key": "OPENAI_API_KEY",
         "anthropic_api_key": "ANTHROPIC_API_KEY",
         "google_places_api_key": "GOOGLE_PLACES_API_KEY",
+        "notion_api_key": "NOTION_API_KEY",
+        "notion_database_id": "NOTION_DATABASE_ID",
+        "linear_api_key": "LINEAR_API_KEY",
+        "linear_team_id": "LINEAR_TEAM_ID",
+        "obsidian_vault_path": "OBSIDIAN_VAULT_PATH",
+        "slack_webhook_url": "SLACK_WEBHOOK_URL",
+        "discord_webhook_url": "DISCORD_WEBHOOK_URL",
+        "zapier_webhook_url": "ZAPIER_WEBHOOK_URL",
+        "make_webhook_url": "MAKE_WEBHOOK_URL",
+        "hubspot_webhook_url": "HUBSPOT_WEBHOOK_URL",
+        "panoptes_generic_webhook_url": "PANOPTES_GENERIC_WEBHOOK_URL",
     }
     data = body.model_dump(exclude_unset=True)
     for field, env_key in mapping.items():
@@ -725,6 +768,46 @@ def ai_profile_brief(body: SolveRequest) -> dict[str, Any]:
         }
     ]
     return profile_brief(related or [lead], offer=body.offer)
+
+
+@app.get("/api/connectors", dependencies=[Depends(_require_api_key)])
+def connectors_list() -> dict[str, Any]:
+    from app.connectors.push import mcp_client_configs
+    from app.connectors.registry import connector_status
+
+    status = connector_status()
+    status["configs"] = mcp_client_configs()
+    return status
+
+
+@app.get("/api/connectors/mcp-config", dependencies=[Depends(_require_api_key)])
+def connectors_mcp_config() -> dict[str, Any]:
+    from app.connectors.push import mcp_client_configs
+
+    return mcp_client_configs()
+
+
+@app.post("/api/connectors/push", dependencies=[Depends(_require_api_key)])
+def connectors_push(body: ConnectorPushRequest) -> dict[str, Any]:
+    from app.connectors.push import push_payload
+
+    data = dict(body.data or {})
+    data.setdefault("kind", body.kind)
+    if body.ask_id:
+        lead = next((item for item in _ai_leads(500) if item.get("ask_id") == body.ask_id), None)
+        if lead is None:
+            raise HTTPException(404, "Ask not found")
+        data["lead"] = lead
+        if body.connector == "obsidian" and body.kind == "ask" and "solution" not in data:
+            from app.ai.pipeline import solve_with_memory
+
+            data["solution"] = solve_with_memory(lead, _ai_leads(500), {"offer": body.offer})
+    try:
+        return push_payload(body.connector, body.event, data, offer=body.offer)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"Connector failed: {exc}") from exc
 
 
 @app.get("/api/radar/watches", dependencies=[Depends(_require_api_key)])

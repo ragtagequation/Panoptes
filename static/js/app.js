@@ -1347,7 +1347,23 @@ const SECRET_FIELDS = [
   ["openai_api_key", "Smarter outreach drafts"],
   ["anthropic_api_key", "Smarter outreach drafts"],
   ["google_places_api_key", "Business discovery"],
+  ["notion_api_key", "Notion integration secret"],
+  ["linear_api_key", "Linear personal API key"],
+  ["slack_webhook_url", "Slack incoming webhook"],
+  ["discord_webhook_url", "Discord webhook"],
+  ["zapier_webhook_url", "Zapier catch hook"],
+  ["make_webhook_url", "Make custom webhook"],
+  ["hubspot_webhook_url", "HubSpot workflow webhook"],
+  ["panoptes_generic_webhook_url", "Generic webhook"],
 ];
+
+const CONNECTOR_TEXT_FIELDS = [
+  "obsidian_vault_path",
+  "notion_database_id",
+  "linear_team_id",
+];
+
+let lastMcpConfig = null;
 
 function renderProviderPills(providers = {}) {
   const host = $("#provider-pills");
@@ -1378,6 +1394,10 @@ async function loadSettings() {
   $("#free_proxy").checked = !!s.free_proxy;
   $("#delay_min").value = s.delay_min;
   $("#delay_max").value = s.delay_max;
+  for (const id of CONNECTOR_TEXT_FIELDS) {
+    const el = document.getElementById(id);
+    if (el) el.value = s[id] || "";
+  }
   for (const [id, fallback] of SECRET_FIELDS) {
     const el = document.getElementById(id);
     if (!el) continue;
@@ -1423,6 +1443,111 @@ async function testProxy() {
   try {
     const data = await api("/api/proxy/test", { method: "POST", body: "{}" });
     setStatus(status, data.ok ? `Proxy OK (${data.status})` : `Proxy failed (${data.status})`, !data.ok);
+  } catch (err) {
+    setStatus(status, err.message, true);
+  }
+}
+
+async function loadConnectors() {
+  const data = await api("/api/connectors");
+  lastMcpConfig = data.configs?.claude_desktop || null;
+  const chips = $("#connectors-chips");
+  if (chips) {
+    chips.innerHTML = "";
+    chips.appendChild(chip(`ready <b>${data.ready_count ?? 0}</b>`));
+    chips.appendChild(chip(`total <b>${(data.connectors || []).length}</b>`));
+  }
+  const list = $("#connectors-list");
+  if (list) {
+    list.innerHTML = "";
+    for (const item of data.connectors || []) {
+      const card = document.createElement("div");
+      card.className = "connector-card";
+      const pill = item.ready
+        ? `<span class="ready-pill">ready</span>`
+        : `<span class="wait-pill">needs setup</span>`;
+      const missing = (item.missing || []).join(", ");
+      card.innerHTML =
+        `<div class="top-row"><strong>${escapeHtml(item.name)}</strong>${pill}</div>` +
+        `<div class="muted">${escapeHtml(item.description || "")}</div>` +
+        `<div class="muted">${escapeHtml(item.setup || "")}${missing ? ` · missing: ${escapeHtml(missing)}` : ""}</div>`;
+      list.appendChild(card);
+    }
+  }
+  const pre = $("#mcp-config-json");
+  if (pre && lastMcpConfig) {
+    pre.textContent = JSON.stringify(lastMcpConfig, null, 2);
+  }
+}
+
+async function saveConnectors() {
+  const status = $("#connectors-status");
+  try {
+    const body = {};
+    for (const id of CONNECTOR_TEXT_FIELDS) {
+      const el = document.getElementById(id);
+      if (el) body[id] = el.value.trim();
+    }
+    for (const id of [
+      "slack_webhook_url", "discord_webhook_url", "zapier_webhook_url",
+      "make_webhook_url", "hubspot_webhook_url", "panoptes_generic_webhook_url",
+      "notion_api_key", "linear_api_key",
+    ]) {
+      const el = document.getElementById(id);
+      const val = el ? el.value.trim() : "";
+      if (val) body[id] = val;
+    }
+    await api("/api/settings", { method: "PUT", body: JSON.stringify(body) });
+    for (const id of [
+      "slack_webhook_url", "discord_webhook_url", "zapier_webhook_url",
+      "make_webhook_url", "hubspot_webhook_url", "panoptes_generic_webhook_url",
+      "notion_api_key", "linear_api_key",
+    ]) {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    }
+    await Promise.all([loadSettings(), loadConnectors()]);
+    setStatus(status, "Connectors saved.");
+    scheduleMasonry();
+  } catch (err) {
+    setStatus(status, err.message, true);
+  }
+}
+
+async function copyMcpConfig() {
+  const status = $("#connectors-status");
+  try {
+    if (!lastMcpConfig) await loadConnectors();
+    const text = JSON.stringify(lastMcpConfig, null, 2);
+    await navigator.clipboard.writeText(text);
+    setStatus(status, "MCP config copied.");
+  } catch (err) {
+    setStatus(status, err.message, true);
+  }
+}
+
+async function testObsidian() {
+  const status = $("#connectors-status");
+  try {
+    setStatus(status, "Writing sample note to Obsidian…");
+    const data = await api("/api/connectors/push", {
+      method: "POST",
+      body: JSON.stringify({
+        connector: "obsidian",
+        event: "connector_test",
+        kind: "ask",
+        data: {
+          lead: {
+            ask_id: "test:obsidian",
+            username: "panoptes",
+            platform: "local",
+            ask_quote: "Connector test — if you can read this in Obsidian, the vault path works.",
+            silence_score: 100,
+          },
+        },
+      }),
+    });
+    setStatus(status, data.path ? `Wrote ${data.path}` : "Obsidian write OK");
   } catch (err) {
     setStatus(status, err.message, true);
   }
@@ -1723,6 +1848,10 @@ $("#start-btn").addEventListener("click", startScrape);
 $("#discover-btn").addEventListener("click", startDiscover);
 $("#save-settings").addEventListener("click", saveSettings);
 $("#test-proxy").addEventListener("click", testProxy);
+$("#save-connectors")?.addEventListener("click", saveConnectors);
+$("#refresh-connectors")?.addEventListener("click", () => loadConnectors().then(scheduleMasonry));
+$("#copy-mcp-config")?.addEventListener("click", copyMcpConfig);
+$("#test-obsidian")?.addEventListener("click", testObsidian);
 $("#ai-cockpit-btn").addEventListener("click", runCockpit);
 $("#ai-brief-btn").addEventListener("click", runBrief);
 $("#ai-solve-btn").addEventListener("click", runSolveBatch);
@@ -1735,6 +1864,7 @@ $("#ai-counterfactual-btn").addEventListener("click", runCounterfactual);
       loadHealth(),
       loadSettings(),
       loadExports(),
+      loadConnectors(),
       refreshDiscoverEstimate(),
       refreshRadarEstimate(),
       loadWatches(),

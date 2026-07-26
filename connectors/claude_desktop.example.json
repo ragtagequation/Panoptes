@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "panoptes": {
+      "command": "python",
+      "args": ["REPLACE_WITH_ABSOLUTE_PATH/panoptes_mcp.py"],
+      "cwd": "REPLACE_WITH_ABSOLUTE_PATH_TO_REPO"
+    }
+  }
+}

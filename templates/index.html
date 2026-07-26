@@ -534,6 +534,74 @@
       <p class="status" id="settings-status" hidden></p>
     </section>
 
+    <section class="panel connectors-panel">
+      <h2><span class="panel-glyph"></span>Connectors</h2>
+      <p class="hint">Push Panoptes into Claude MCP, Obsidian, Slack, Discord, Notion, Linear, Zapier, Make, HubSpot, or any webhook.</p>
+      <div class="stat-chips" id="connectors-chips"></div>
+      <div class="connector-list" id="connectors-list"></div>
+
+      <h3 class="subhead">Claude / Cursor MCP</h3>
+      <p class="hint">Copy this into Claude Desktop <code>claude_desktop_config.json</code> or Cursor MCP settings, then restart the host.</p>
+      <pre class="code-block" id="mcp-config-json"></pre>
+      <div class="row actions">
+        <button type="button" class="btn ghost" id="copy-mcp-config">Copy MCP config</button>
+        <button type="button" class="btn ghost" id="refresh-connectors">Refresh</button>
+      </div>
+
+      <h3 class="subhead">Connector credentials</h3>
+      <div class="keys-grid">
+        <label class="field">
+          <span>Obsidian vault path</span>
+          <input type="text" id="obsidian_vault_path" placeholder="C:\Users\you\Documents\ObsidianVault" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Slack webhook</span>
+          <input type="password" id="slack_webhook_url" placeholder="https://hooks.slack.com/..." autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Discord webhook</span>
+          <input type="password" id="discord_webhook_url" placeholder="https://discord.com/api/webhooks/..." autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Zapier catch hook</span>
+          <input type="password" id="zapier_webhook_url" placeholder="https://hooks.zapier.com/..." autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Make webhook</span>
+          <input type="password" id="make_webhook_url" placeholder="https://hook.make.com/..." autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>HubSpot webhook</span>
+          <input type="password" id="hubspot_webhook_url" placeholder="Workflow webhook URL" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Generic webhook</span>
+          <input type="password" id="panoptes_generic_webhook_url" placeholder="n8n / custom endpoint" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Notion API key</span>
+          <input type="password" id="notion_api_key" placeholder="secret_..." autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Notion database ID</span>
+          <input type="text" id="notion_database_id" placeholder="Database UUID" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Linear API key</span>
+          <input type="password" id="linear_api_key" placeholder="lin_api_..." autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Linear team ID</span>
+          <input type="text" id="linear_team_id" placeholder="Team UUID" autocomplete="off" />
+        </label>
+      </div>
+      <div class="row actions">
+        <button type="button" class="btn primary" id="save-connectors">Save connectors</button>
+        <button type="button" class="btn ghost" id="test-obsidian">Test Obsidian write</button>
+      </div>
+      <p class="status" id="connectors-status" hidden></p>
+    </section>
+
     <section class="panel exports-panel">
       <h2><span class="panel-glyph"></span>Exports</h2>
       <ul id="exports-list" class="exports"></ul>
