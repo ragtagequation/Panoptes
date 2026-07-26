@@ -891,6 +891,44 @@ function renderCockpit(data) {
       `<div class="muted" style="margin-top:0.25rem">Defense: ${escapeHtml(a.defense || "")}</div>`;
     sa.appendChild(li);
   }
+
+  // Account intelligence
+  const acc = data.accounts || {};
+  $("#ai-accounts-insight").textContent = acc.insight || "";
+  const ac = $("#ai-accounts-chips");
+  ac.innerHTML = "";
+  const firm = acc.firmographics || {};
+  const tech = acc.technographics || {};
+  if (firm.industries?.[0]) ac.appendChild(chip(`industry <b>${escapeHtml(firm.industries[0].name)}</b>`));
+  if (firm.size_bands?.[0]) ac.appendChild(chip(`size <b>${escapeHtml(firm.size_bands[0].name)}</b>`));
+  ac.appendChild(chip(`tech coverage <b>${tech.coverage ?? 0}%</b>`));
+  ac.appendChild(chip(`CRM <b>${tech.crm_penetration ?? 0}%</b>`));
+  const tierMix = acc.tier_mix || {};
+  Object.entries(tierMix).forEach(([k, v]) => ac.appendChild(chip(`tier ${k} <b>${v}</b>`)));
+
+  const al = $("#ai-accounts-list");
+  al.innerHTML = "";
+  for (const a of (acc.accounts || []).slice(0, 8)) {
+    const row = document.createElement("div");
+    row.className = "intel-row";
+    const firmP = a.firmographics || {};
+    const techP = a.technographics || {};
+    const products = (techP.products || []).map((p) => p.product).slice(0, 4).join(", ");
+    row.innerHTML =
+      `<span class="fit-pill">tier ${escapeHtml(a.account_tier?.label || "?")}</span>` +
+      `<span class="odds-pill">fit ${a.offer_fit ?? 0}</span>` +
+      `<span class="intent-pill">${escapeHtml(firmP.industry || "—")} · ${escapeHtml(firmP.size_band || "—")}</span>` +
+      `<span class="stage-pill">${escapeHtml(a.stack_gap?.wedge || "")}</span>` +
+      `<div style="margin-top:0.3rem"><strong>${escapeHtml(a.username || "")}</strong> — ${escapeHtml(a.brief || "")}</div>` +
+      (products ? `<div class="muted">stack: ${escapeHtml(products)}</div>` : "") +
+      (a.quote ? `<em style="display:block;margin-top:0.2rem;color:var(--muted)">“${escapeHtml(a.quote)}”</em>` : "");
+    al.appendChild(row);
+  }
+  const tp = $("#ai-tech-products");
+  tp.innerHTML = "";
+  for (const p of tech.top_products || []) {
+    tp.appendChild(chip(escapeHtml(`${p.name} ×${p.count}`), "voc-chip"));
+  }
 }
 
 async function runCounterfactual() {
@@ -1041,6 +1079,11 @@ function solutionCard(entry) {
   const moatPill = moat.moat_hours != null
     ? `<span class="fit-pill">${moat.moat_hours}h moat</span>`
     : "";
+  const acct = s.account || {};
+  const acctPill = acct.tier
+    ? `<span class="intent-pill">tier ${escapeHtml(acct.tier.label || "")}</span>` +
+      `<span class="odds-pill">fit ${acct.offer_fit ?? 0}</span>`
+    : "";
   card.innerHTML = `
     <div class="sol-head">
       <span class="sol-conf">${Number(s.confidence || 0)}% confident</span>
@@ -1050,6 +1093,7 @@ function solutionCard(entry) {
       <span>${escapeHtml(s.source || "")}</span>
       ${intelPills}
       ${moatPill}
+      ${acctPill}
     </div>
     ${s.diagnosis ? `<p class="sol-diag">${escapeHtml(s.diagnosis)}</p>` : ""}
     ${steps ? `<ol class="sol-steps">${steps}</ol>` : ""}
@@ -1086,6 +1130,13 @@ function solutionCard(entry) {
     const p = document.createElement("p");
     p.className = "empty";
     p.textContent = s.error;
+    card.appendChild(p);
+  }
+  if (acct.brief) {
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.style.marginTop = "0.45rem";
+    p.textContent = acct.brief;
     card.appendChild(p);
   }
   return card;

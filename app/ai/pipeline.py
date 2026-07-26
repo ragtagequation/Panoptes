@@ -1,13 +1,10 @@
-"""Full intelligence pipeline — one call, every advanced AI layer.
-
-Senior pattern: a single orchestrator that fans out into specialized modules
-and returns a cockpit-ready payload the UI can render without N round trips.
-"""
+"""Cockpit + solve orchestration."""
 
 from __future__ import annotations
 
 from typing import Any
 
+from app.ai.account import account_landscape
 from app.ai.contagion import contagion_rank
 from app.ai.dialect import dialect_gap
 from app.ai.engine import ai_mode
@@ -15,10 +12,10 @@ from app.ai.forecast import forecast_demand
 from app.ai.graph import build_demand_graph
 from app.ai.icp import discover_icp
 from app.ai.integrity import verify_brief_pains
-from app.ai.intel import analyze_many
+from app.ai.intel import analyze_ask, analyze_many
 from app.ai.match import match_summary, rank_asks
 from app.ai.memory import retrieve_cases, training_signal
-from app.ai.moat import moat_board
+from app.ai.moat import first_responder_moat, moat_board
 from app.ai.personas import infer_personas
 from app.ai.saturation import saturation_map
 from app.ai.solutions import solve_ask
@@ -31,7 +28,6 @@ def run_cockpit(
     leads: list[dict[str, Any]],
     offer_info: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Aggregate demand intelligence for the AI cockpit panel."""
     offer_info = offer_info or {}
     offer = offer_info.get("offer") or ""
 
@@ -45,15 +41,23 @@ def run_cockpit(
     memory = training_signal(leads)
     brief = demand_brief(leads, offer_info)
 
-    # Novel white-space layers
     moat = moat_board(leads, limit=10)
     vacuum = analyze_vacuum(leads)
     saturation = saturation_map(leads)
     contagion = contagion_rank(leads, limit=8)
-    dialect = dialect_gap(offer, leads) if offer else {"gap_score": 0, "label": "n/a", "insight": "Enter an offer to measure dialect gap."}
+    dialect = (
+        dialect_gap(offer, leads)
+        if offer
+        else {"gap_score": 0, "label": "n/a", "insight": "Offer required for dialect gap."}
+    )
     icp = discover_icp(leads)
     integrity = verify_brief_pains(brief, leads)
-    stress = stress_test(offer, leads) if offer else {"attacks": [], "survive_score": 0, "verdict": "Enter an offer to stress-test."}
+    stress = (
+        stress_test(offer, leads)
+        if offer
+        else {"attacks": [], "survive_score": 0, "verdict": "Offer required."}
+    )
+    accounts = account_landscape(leads, offer)
 
     return {
         "source": ai_mode(),
@@ -85,33 +89,15 @@ def run_cockpit(
         "icp": icp,
         "integrity": integrity,
         "stress": stress,
+        "accounts": accounts,
         "capabilities": [
-            "answer_engine",
-            "demand_verdict",
-            "tfidf_clustering",
-            "bm25_offer_match",
-            "naive_bayes_intent",
-            "urgency_sentiment",
-            "buying_stage",
-            "reply_odds",
-            "pagerank_demand_graph",
-            "persona_inference",
-            "objection_mining",
-            "ols_forecast",
-            "ab_variants",
-            "outcome_rag",
-            "offer_doctor",
-            # white-space (not in DemandHunter / Matchstick / LeadIntent)
-            "first_responder_moat",
-            "competitor_vacuum",
-            "do_nothing_share",
-            "blue_ocean_saturation",
-            "demand_contagion",
-            "dialect_gap",
-            "icp_autodiscovery",
-            "evidence_integrity",
-            "adversarial_stress_test",
-            "counterfactual_demand",
+            "answer_engine", "demand_verdict", "tfidf_clustering", "bm25_offer_match",
+            "naive_bayes_intent", "buying_stage", "reply_odds", "pagerank_demand_graph",
+            "persona_inference", "ols_forecast", "ab_variants", "outcome_rag",
+            "first_responder_moat", "competitor_vacuum", "blue_ocean_saturation",
+            "demand_contagion", "dialect_gap", "icp_autodiscovery", "evidence_integrity",
+            "adversarial_stress_test", "counterfactual_demand",
+            "firmographics", "technographics", "account_intelligence",
         ],
     }
 
@@ -121,24 +107,40 @@ def solve_with_memory(
     corpus: list[dict[str, Any]],
     offer_info: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Answer Engine augmented with nearest past wins + ask intelligence + moat."""
-    from app.ai.intel import analyze_ask
-    from app.ai.moat import first_responder_moat
+    from app.ai.account import account_packet
 
+    offer_info = offer_info or {}
+    offer = offer_info.get("offer") or ""
     solution = solve_ask(lead, offer_info)
     intel = analyze_ask(lead)
     cases = retrieve_cases(lead, corpus, limit=4)
     moat = first_responder_moat(lead, corpus)
+    account = account_packet(lead, offer)
 
     solution["intel"] = intel
     solution["moat"] = moat
+    solution["account"] = {
+        "tier": account["account_tier"],
+        "offer_fit": account["offer_fit"],
+        "firmographics": account["firmographics"],
+        "technographics": {
+            "products": [p["product"] for p in (account["technographics"].get("products") or [])[:6]],
+            "maturity": account["technographics"].get("maturity"),
+            "by_category": account["technographics"].get("by_category"),
+        },
+        "stack_gap": account["stack_gap"],
+        "brief": account["brief"],
+    }
     solution["similar_cases"] = cases.get("cases") or []
     solution["memory_insight"] = cases.get("insight") or ""
     if cases.get("patterns"):
         solution["learned_patterns"] = cases["patterns"]
 
     near_win = next(
-        (c for c in (cases.get("cases") or []) if c.get("polarity") == "win" and c["similarity"] >= 40),
+        (
+            c for c in (cases.get("cases") or [])
+            if c.get("polarity") == "win" and c["similarity"] >= 40
+        ),
         None,
     )
     if near_win and not solution.get("error"):
@@ -148,8 +150,6 @@ def solve_with_memory(
             solution["helpful_note"] = ((solution.get("helpful_note") or "") + tip).strip()
 
     if moat.get("urgency") == "closing_fast" and solution.get("helpful_note"):
-        solution["helpful_note"] = (
-            f"[Moat ~{moat['moat_hours']}h] " + solution["helpful_note"]
-        )
+        solution["helpful_note"] = f"[Moat ~{moat['moat_hours']}h] " + solution["helpful_note"]
 
     return solution

@@ -152,6 +152,14 @@ def summarize_website(url: str, timeout: float = 12) -> dict[str, Any]:
                 result["phone"] = phones[0] if phones else None
                 result["scrape_source"] = "firecrawl"
                 result["website"] = url
+                try:
+                    from app.ai.technographics import fingerprint_html
+                    fp = fingerprint_html(fc.get("html") or blob)
+                    if fp:
+                        result["tech_fingerprint"] = fp
+                        result["html_snippet"] = (fc.get("html") or blob)[:12_000]
+                except Exception:
+                    pass
                 if result["email"] or result["phone"] or result["what_they_do"]:
                     return result
     except Exception as e:
@@ -200,6 +208,25 @@ def summarize_website(url: str, timeout: float = 12) -> dict[str, Any]:
     result["phones_found"] = list(dict.fromkeys(result["phones_found"]))
     if not result["website"]:
         result["website"] = url
+
+    # Stack fingerprints from whatever HTML we already fetched — no extra requests
+    try:
+        from app.ai.technographics import fingerprint_html
+        fp: list[dict[str, str]] = []
+        seen: set[str] = set()
+        for chunk in html_chunks:
+            for item in fingerprint_html(chunk):
+                key = f"{item['category']}:{item['product']}"
+                if key not in seen:
+                    seen.add(key)
+                    fp.append(item)
+        if fp:
+            result["tech_fingerprint"] = fp
+            # Keep a small HTML slice only when useful for later re-scan
+            result["html_snippet"] = (html_chunks[0] or "")[:12_000]
+    except Exception as e:
+        logger.debug("tech fingerprint skipped: %s", e)
+
     return result
 
 
@@ -252,8 +279,21 @@ def enrich_lead_contacts(lead: dict[str, Any], *, scrape_site: bool = True) -> d
             out["phone_source"] = "website"
         if site.get("emails_found"):
             out["emails_found"] = ",".join(site["emails_found"][:8])
+        if site.get("tech_fingerprint"):
+            out["tech_fingerprint"] = site["tech_fingerprint"]
+        if site.get("html_snippet") and not out.get("html_snippet"):
+            out["html_snippet"] = site["html_snippet"]
         if not out.get("website"):
             out["website"] = site.get("website") or website
+
+        # Derive firm/tech packets once while enriching so radar rows carry them
+        try:
+            from app.ai.firmographics import extract_firmographics
+            from app.ai.technographics import extract_technographics
+            out["firmographics"] = extract_firmographics(out)
+            out["technographics"] = extract_technographics(out)
+        except Exception as e:
+            logger.debug("firm/tech attach skipped: %s", e)
 
     # Optional paid enrichers when still missing contacts
     out = _apply_paid_enrichers(out)

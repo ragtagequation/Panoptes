@@ -365,7 +365,7 @@ def ai_status() -> dict[str, Any]:
             "match", "intel", "graph", "personas", "forecast",
             "variants", "memory", "moat", "vacuum", "saturation",
             "contagion", "dialect", "icp", "integrity", "stress",
-            "counterfactual",
+            "counterfactual", "accounts", "firmographics", "technographics",
         ],
         "algorithms": [
             "tfidf_clustering", "bm25_ranking", "char_ngram_jaccard",
@@ -374,6 +374,7 @@ def ai_status() -> dict[str, Any]:
             "exponential_moat_decay", "competitor_vacuum", "blue_ocean_score",
             "demand_contagion", "dialect_gap", "icp_lift", "evidence_integrity",
             "adversarial_stress", "counterfactual_rerank",
+            "firmographic_rules", "technographic_fingerprint", "account_tiering",
         ],
     }
 
@@ -627,6 +628,63 @@ def ai_integrity(limit: int = 200, offer: str = "") -> dict[str, Any]:
     leads = _ai_leads(limit, offer)
     brief = demand_brief(leads, {"offer": offer})
     return verify_brief_pains(brief, leads)
+
+
+@app.get("/api/ai/accounts", dependencies=[Depends(_require_api_key)])
+def ai_accounts(limit: int = 150, offer: str = "") -> dict[str, Any]:
+    from app.ai.account import account_landscape
+
+    return account_landscape(_ai_leads(limit, offer), offer)
+
+
+@app.get("/api/ai/firmographics", dependencies=[Depends(_require_api_key)])
+def ai_firmographics(limit: int = 200, offer: str = "") -> dict[str, Any]:
+    from app.ai.firmographics import extract_firmographics, firmographic_landscape
+
+    leads = _ai_leads(limit, offer)
+    return {
+        "landscape": firmographic_landscape(leads),
+        "samples": [
+            {"ask_id": l.get("ask_id"), "username": l.get("username"), **extract_firmographics(l)}
+            for l in leads[:15]
+        ],
+    }
+
+
+@app.get("/api/ai/technographics", dependencies=[Depends(_require_api_key)])
+def ai_technographics(limit: int = 200, offer: str = "") -> dict[str, Any]:
+    from app.ai.technographics import extract_technographics, technographic_landscape
+
+    leads = _ai_leads(limit, offer)
+    return {
+        "landscape": technographic_landscape(leads),
+        "samples": [
+            {"ask_id": l.get("ask_id"), "username": l.get("username"), **extract_technographics(l)}
+            for l in leads[:15]
+        ],
+    }
+
+
+@app.post("/api/ai/account-brief", dependencies=[Depends(_require_api_key)])
+def ai_account_brief(body: SolveRequest) -> dict[str, Any]:
+    from app.ai.account import account_brief_generative, account_packet
+
+    lead: dict[str, Any] | None = None
+    if body.ask_id:
+        for candidate in _ai_leads(500):
+            if candidate.get("ask_id") == body.ask_id:
+                lead = candidate
+                break
+        if lead is None:
+            raise HTTPException(404, "Ask not found")
+    elif body.text and body.text.strip():
+        lead = {"ask_quote": body.text.strip(), "username": "manual", "ask_id": ""}
+    else:
+        raise HTTPException(422, "Provide ask_id or text")
+
+    if body.offer:
+        return account_brief_generative(lead, body.offer)
+    return account_packet(lead, body.offer or "")
 
 
 @app.get("/api/radar/watches", dependencies=[Depends(_require_api_key)])
