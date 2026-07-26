@@ -16,7 +16,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-0b1210?style=for-the-badge&logo=python&logoColor=35e6ff)](https://www.python.org/downloads/)
 [![Free · Self-hosted](https://img.shields.io/badge/free-self--hosted-35e6ff?style=for-the-badge)](#install-in-2-minutes)
-[![AI Engine](https://img.shields.io/badge/AI-25%2B%20capabilities-9a7bff?style=for-the-badge)](#the-ai-engine)
+[![AI Engine](https://img.shields.io/badge/AI-30%2B%20capabilities-9a7bff?style=for-the-badge)](#the-ai-engine)
 [![Public data only](https://img.shields.io/badge/data-public%20only-1f8f68?style=for-the-badge)](#what-panoptes-never-does)
 [![License: Proprietary](https://img.shields.io/badge/license-proprietary-e07a6a?style=for-the-badge)](LICENSE)
 
@@ -36,9 +36,10 @@ A human, on the public internet, stuck, waiting for someone useful.
 2. a silence score + priority intel (intent · stage · urgency · reply odds)
 3. public contact when available
 4. **firmographics + technographics** from public site copy and HTML fingerprints
-5. a **help-first solution** (diagnosis, steps, deliverable) — not just a pitch
-6. A/B outreach variants scored by expected value
-7. a demand graph, forecast, personas, first-responder moat, and outcome-trained memory
+5. a resolved **cross-platform profile dossier** with confidence, completeness, and risk
+6. a **help-first solution** (diagnosis, steps, deliverable) — not just a pitch
+7. A/B outreach variants scored by expected value
+8. a demand graph, forecast, personas, first-responder moat, and outcome-trained memory
 
 Then you reply. Book the call. Or learn — fast — that nobody is asking.
 
@@ -184,6 +185,13 @@ lead (A/B/C), scores offer-fit, and names the stack wedge: displace, fill-gap,
 or complement. Site enrichment attaches `firmographics` / `technographics` onto
 leads when a website is scraped.
 
+#### Profile Intelligence
+Deterministic entity resolution merges repeated public records using verified
+email, owned-domain, and platform-handle keys. Signal fusion builds one dossier
+with identity confidence, profile completeness, authority, contact-route
+quality, behavioral intent, cross-profile consistency, risk flags, and a
+prioritized evidence trail. Optional LLM briefs stay grounded in those facts.
+
 Hit **Run full AI cockpit** in the UI to fire every layer in one pass.
 Use **Simulate alternate** for counterfactual demand.
 
@@ -221,6 +229,7 @@ Use **Simulate alternate** for counterfactual demand.
 | Firmographics | Industry / size / geo / revenue rules | Public company shape without a data vendor |
 | Technographics | HTML + copy stack fingerprints | CMS, CRM, ads, analytics, payments |
 | Account intel | Tier × offer-fit × stack wedge | Who to call, and how to position |
+| Profile intel | Exact-key entity resolution + weighted signal fusion | One evidence-backed identity across sources |
 
 No GPU. No vector DB. No SaaS lock-in. Pure Python, runs on a laptop.
 
@@ -412,6 +421,8 @@ python find_leads.py "dental marketing agencies" --complete-only
 | `GET /api/ai/firmographics` | Industry / size / geo landscape |
 | `GET /api/ai/technographics` | Detected stack landscape |
 | `POST /api/ai/account-brief` | Per-ask account brief (generative when keyed) |
+| `GET /api/ai/profiles` | Cross-platform identity resolution + profile dossiers |
+| `POST /api/ai/profile-brief` | Grounded profile intelligence brief |
 | `GET /api/ai/clusters` | TF-IDF clusters |
 
 ```env
@@ -481,7 +492,7 @@ app/ai/         AI engine
                   synthesis · pipeline · engine
                   moat · vacuum · saturation · contagion
                   dialect · icp · integrity · stress · counterfactual
-                  firmographics · technographics · account
+                  firmographics · technographics · account · profiles
 app/demand/     Demand Radar (offers, silence, deepen, drafts, store)
 app/discovery/  Reddit / web / contacts / extract
 app/scrapers/   Platform profile scrapers

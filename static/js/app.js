@@ -929,6 +929,33 @@ function renderCockpit(data) {
   for (const p of tech.top_products || []) {
     tp.appendChild(chip(escapeHtml(`${p.name} ×${p.count}`), "voc-chip"));
   }
+
+  const profiles = data.profiles || {};
+  $("#ai-profiles-insight").textContent = profiles.insight || "";
+  const pc = $("#ai-profiles-chips");
+  pc.innerHTML = "";
+  pc.appendChild(chip(`resolved <b>${profiles.resolved_profiles ?? 0}</b>`));
+  pc.appendChild(chip(`merged <b>${profiles.merged_records ?? 0}</b>`));
+  pc.appendChild(chip(`contactable <b>${profiles.contactable ?? 0}</b>`));
+  pc.appendChild(chip(`high confidence <b>${profiles.high_confidence ?? 0}</b>`));
+
+  const profileList = $("#ai-profiles-list");
+  profileList.innerHTML = "";
+  for (const p of (profiles.profiles || []).slice(0, 8)) {
+    const row = document.createElement("div");
+    row.className = "intel-row";
+    const route = p.contact?.routes?.[0];
+    const risks = (p.risk_flags || []).join(", ");
+    row.innerHTML =
+      `<span class="fit-pill">priority ${p.priority_score ?? 0}</span>` +
+      `<span class="odds-pill">identity ${p.identity_confidence ?? 0}</span>` +
+      `<span class="stage-pill">complete ${p.completeness ?? 0}</span>` +
+      `<span class="intent-pill">${escapeHtml((p.platforms || []).join(" · ") || "single source")}</span>` +
+      `<div style="margin-top:0.3rem"><strong>${escapeHtml(p.display_name || "Unknown")}</strong> — ${escapeHtml(p.summary || "")}</div>` +
+      (route ? `<div class="muted">best route: ${escapeHtml(route.channel)} · quality ${route.quality}</div>` : "") +
+      (risks ? `<div class="muted">risks: ${escapeHtml(risks)}</div>` : "");
+    profileList.appendChild(row);
+  }
 }
 
 async function runCounterfactual() {

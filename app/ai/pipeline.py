@@ -17,6 +17,7 @@ from app.ai.match import match_summary, rank_asks
 from app.ai.memory import retrieve_cases, training_signal
 from app.ai.moat import first_responder_moat, moat_board
 from app.ai.personas import infer_personas
+from app.ai.profiles import build_profile, resolve_profiles
 from app.ai.saturation import saturation_map
 from app.ai.solutions import solve_ask
 from app.ai.stress import stress_test
@@ -58,6 +59,7 @@ def run_cockpit(
         else {"attacks": [], "survive_score": 0, "verdict": "Offer required."}
     )
     accounts = account_landscape(leads, offer)
+    profiles = resolve_profiles(leads, limit=len(leads))
 
     return {
         "source": ai_mode(),
@@ -90,6 +92,7 @@ def run_cockpit(
         "integrity": integrity,
         "stress": stress,
         "accounts": accounts,
+        "profiles": profiles,
         "capabilities": [
             "answer_engine", "demand_verdict", "tfidf_clustering", "bm25_offer_match",
             "naive_bayes_intent", "buying_stage", "reply_odds", "pagerank_demand_graph",
@@ -98,6 +101,7 @@ def run_cockpit(
             "demand_contagion", "dialect_gap", "icp_autodiscovery", "evidence_integrity",
             "adversarial_stress_test", "counterfactual_demand",
             "firmographics", "technographics", "account_intelligence",
+            "identity_resolution", "profile_intelligence",
         ],
     }
 
@@ -116,6 +120,7 @@ def solve_with_memory(
     cases = retrieve_cases(lead, corpus, limit=4)
     moat = first_responder_moat(lead, corpus)
     account = account_packet(lead, offer)
+    profile = build_profile([lead])
 
     solution["intel"] = intel
     solution["moat"] = moat
@@ -130,6 +135,16 @@ def solve_with_memory(
         },
         "stack_gap": account["stack_gap"],
         "brief": account["brief"],
+    }
+    solution["profile"] = {
+        "profile_id": profile["profile_id"],
+        "identity_confidence": profile["identity_confidence"],
+        "completeness": profile["completeness"],
+        "priority_score": profile["priority_score"],
+        "platforms": profile["platforms"],
+        "contact_routes": profile["contact"]["routes"][:4],
+        "risk_flags": profile["risk_flags"],
+        "summary": profile["summary"],
     }
     solution["similar_cases"] = cases.get("cases") or []
     solution["memory_insight"] = cases.get("insight") or ""

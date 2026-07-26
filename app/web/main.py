@@ -366,6 +366,7 @@ def ai_status() -> dict[str, Any]:
             "variants", "memory", "moat", "vacuum", "saturation",
             "contagion", "dialect", "icp", "integrity", "stress",
             "counterfactual", "accounts", "firmographics", "technographics",
+            "profiles", "profile_brief",
         ],
         "algorithms": [
             "tfidf_clustering", "bm25_ranking", "char_ngram_jaccard",
@@ -375,6 +376,7 @@ def ai_status() -> dict[str, Any]:
             "demand_contagion", "dialect_gap", "icp_lift", "evidence_integrity",
             "adversarial_stress", "counterfactual_rerank",
             "firmographic_rules", "technographic_fingerprint", "account_tiering",
+            "deterministic_entity_resolution", "profile_signal_fusion",
         ],
     }
 
@@ -685,6 +687,44 @@ def ai_account_brief(body: SolveRequest) -> dict[str, Any]:
     if body.offer:
         return account_brief_generative(lead, body.offer)
     return account_packet(lead, body.offer or "")
+
+
+@app.get("/api/ai/profiles", dependencies=[Depends(_require_api_key)])
+def ai_profiles(limit: int = 200, offer: str = "") -> dict[str, Any]:
+    from app.ai.profiles import resolve_profiles
+
+    return resolve_profiles(_ai_leads(limit, offer), limit=limit)
+
+
+@app.post("/api/ai/profile-brief", dependencies=[Depends(_require_api_key)])
+def ai_profile_brief(body: SolveRequest) -> dict[str, Any]:
+    from app.ai.profiles import profile_brief
+
+    corpus = _ai_leads(500)
+    lead: dict[str, Any] | None = None
+    if body.ask_id:
+        lead = next((item for item in corpus if item.get("ask_id") == body.ask_id), None)
+        if lead is None:
+            raise HTTPException(404, "Ask not found")
+    elif body.text and body.text.strip():
+        lead = {"ask_quote": body.text.strip(), "username": "manual", "ask_id": ""}
+    else:
+        raise HTTPException(422, "Provide ask_id or text")
+
+    keys = {
+        str(lead.get("email") or "").lower(),
+        str(lead.get("website") or "").lower(),
+        str(lead.get("username") or "").lower(),
+    } - {""}
+    related = [
+        item for item in corpus
+        if keys & {
+            str(item.get("email") or "").lower(),
+            str(item.get("website") or "").lower(),
+            str(item.get("username") or "").lower(),
+        }
+    ]
+    return profile_brief(related or [lead], offer=body.offer)
 
 
 @app.get("/api/radar/watches", dependencies=[Depends(_require_api_key)])
